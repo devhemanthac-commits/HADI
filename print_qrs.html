@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HADI QR Codes Print</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 0; background: #eee; }
+  .page {
+    width: 190mm; /* A4 is 210mm wide, minus 2x10mm margins */
+    height: 277mm; /* A4 is 297mm high, minus 2x10mm margins */
+    background: white;
+    margin: 10mm auto;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 5mm;
+    page-break-after: always;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  @media print {
+    body { background: white; margin: 0; }
+    .page { margin: 0; box-shadow: none; width: 100%; height: 277mm; }
+  }
+  .qr-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #ccc;
+    padding: 10px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+  .qr-image {
+    width: 50mm;
+    height: 50mm;
+    object-fit: contain;
+  }
+  .qr-name {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #333;
+    max-width: 100%;
+    word-wrap: break-word;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_1_mysore_palace.png" alt="Mysore Palace" />
+    <div class="qr-name">Mysore Palace</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_2_jaganmohan_palace.png" alt="Jaganmohan Palace" />
+    <div class="qr-name">Jaganmohan Palace</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_3_mysore_zoo.png" alt="Mysore Zoo" />
+    <div class="qr-name">Mysore Zoo</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_4_rail_museum.png" alt="Rail Museum" />
+    <div class="qr-name">Rail Museum</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_5_karanji_lake_dome.png" alt="Karanji Lake Dome" />
+    <div class="qr-name">Karanji Lake Dome</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_38_mysore_race_course.png" alt="Mysore Race Course" />
+    <div class="qr-name">Mysore Race Course</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_39_university_of_mysore.png" alt="University of Mysore" />
+    <div class="qr-name">University of Mysore</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_40_folklore_museum.png" alt="Folklore Museum" />
+    <div class="qr-name">Folklore Museum</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_41_devaraja_market.png" alt="Devaraja Market" />
+    <div class="qr-name">Devaraja Market</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_43_mysore_sand_sculpture_museum.png" alt="Mysore Sand Sculpture Museum" />
+    <div class="qr-name">Mysore Sand Sculpture Museum</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_6_chamundeshwari_temple.png" alt="Chamundeshwari Temple" />
+    <div class="qr-name">Chamundeshwari Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_7_trinesvara_temple.png" alt="Trinesvara Temple" />
+    <div class="qr-name">Trinesvara Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_8_venkataramana_temple.png" alt="Venkataramana Temple" />
+    <div class="qr-name">Venkataramana Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_30_prasanna_krishnaswamy_temple.png" alt="Prasanna Krishnaswamy Temple" />
+    <div class="qr-name">Prasanna Krishnaswamy Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_31_parakala_mutt.png" alt="Parakala Mutt" />
+    <div class="qr-name">Parakala Mutt</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_32_sandeshwari_devi_temple.png" alt="Sandeshwari Devi Temple" />
+    <div class="qr-name">Sandeshwari Devi Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_33_nanjundeshwara_temple.png" alt="Nanjundeshwara Temple" />
+    <div class="qr-name">Nanjundeshwara Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_9_st__philomena_s_church.png" alt="St. Philomena's Church" />
+    <div class="qr-name">St. Philomena's Church</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_10_st__bartholomew_s.png" alt="St. Bartholomew's" />
+    <div class="qr-name">St. Bartholomew's</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_11_iyer_s_idli_corner.png" alt="Iyer's Idli Corner" />
+    <div class="qr-name">Iyer's Idli Corner</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_12_nandy_s_filter_coffee.png" alt="Nandy's Filter Coffee" />
+    <div class="qr-name">Nandy's Filter Coffee</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_13_hotel_rrr.png" alt="Hotel RRR" />
+    <div class="qr-name">Hotel RRR</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_14_vinayaka_mylari.png" alt="Vinayaka Mylari" />
+    <div class="qr-name">Vinayaka Mylari</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_34_dasaprakash_restaurant.png" alt="Dasaprakash Restaurant" />
+    <div class="qr-name">Dasaprakash Restaurant</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_35_pelican_pub___grille.png" alt="Pelican Pub & Grille" />
+    <div class="qr-name">Pelican Pub & Grille</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_36_caf__aramane.png" alt="Café Aramane" />
+    <div class="qr-name">Café Aramane</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_37_hotel_siddharta.png" alt="Hotel Siddharta" />
+    <div class="qr-name">Hotel Siddharta</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_15_lalitha_mahal_palace.png" alt="Lalitha Mahal Palace" />
+    <div class="qr-name">Lalitha Mahal Palace</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_16_the_windflower_resort.png" alt="The Windflower Resort" />
+    <div class="qr-name">The Windflower Resort</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_17_hotel_sandesh_prince.png" alt="Hotel Sandesh Prince" />
+    <div class="qr-name">Hotel Sandesh Prince</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_26_radisson_blu_hotel.png" alt="Radisson Blu Hotel" />
+    <div class="qr-name">Radisson Blu Hotel</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_27_green_hotel.png" alt="Green Hotel" />
+    <div class="qr-name">Green Hotel</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_28_pai_vista_hotel.png" alt="Pai Vista Hotel" />
+    <div class="qr-name">Pai Vista Hotel</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_29_courtyard_by_marriott.png" alt="Courtyard by Marriott" />
+    <div class="qr-name">Courtyard by Marriott</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_18_kukkarahalli_lake.png" alt="Kukkarahalli Lake" />
+    <div class="qr-name">Kukkarahalli Lake</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_19_chamundi_hill.png" alt="Chamundi Hill" />
+    <div class="qr-name">Chamundi Hill</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_20_brindavan_gardens.png" alt="Brindavan Gardens" />
+    <div class="qr-name">Brindavan Gardens</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_42_karanji_lake.png" alt="Karanji Lake" />
+    <div class="qr-name">Karanji Lake</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_21_rangoli_street_art.png" alt="Rangoli Street Art" />
+    <div class="qr-name">Rangoli Street Art</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_22_puppet_workshop_hall.png" alt="Puppet Workshop Hall" />
+    <div class="qr-name">Puppet Workshop Hall</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_23_mysore_silk_weaver.png" alt="Mysore Silk Weaver" />
+    <div class="qr-name">Mysore Silk Weaver</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_24_channapatna_toys.png" alt="Channapatna Toys" />
+    <div class="qr-name">Channapatna Toys</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_25_jama_masjid_backstreet.png" alt="Jama Masjid Backstreet" />
+    <div class="qr-name">Jama Masjid Backstreet</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_44_chennakesava_temple.png" alt="Chennakesava Temple" />
+    <div class="qr-name">Chennakesava Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_45_golden_temple__namdroling_.png" alt="Golden Temple (Namdroling)" />
+    <div class="qr-name">Golden Temple (Namdroling)</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_46_himavad_gopalaswamy_betta.png" alt="Himavad Gopalaswamy Betta" />
+    <div class="qr-name">Himavad Gopalaswamy Betta</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_47_melukote_cheluvanarayana_temple.png" alt="Melukote Cheluvanarayana Temple" />
+    <div class="qr-name">Melukote Cheluvanarayana Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_48_kabini_river_lodge.png" alt="Kabini River Lodge" />
+    <div class="qr-name">Kabini River Lodge</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_49_silent_shores_resort___spa.png" alt="Silent Shores Resort & Spa" />
+    <div class="qr-name">Silent Shores Resort & Spa</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_50_golden_landmark_resort.png" alt="Golden Landmark Resort" />
+    <div class="qr-name">Golden Landmark Resort</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_51_gommateshwara_monolith.png" alt="Gommateshwara Monolith" />
+    <div class="qr-name">Gommateshwara Monolith</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_52_talakadu_sand_dunes.png" alt="Talakadu Sand Dunes" />
+    <div class="qr-name">Talakadu Sand Dunes</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_53_br_hills_tiger_reserve.png" alt="BR Hills Tiger Reserve" />
+    <div class="qr-name">BR Hills Tiger Reserve</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_54_sri_venugopala_swamy_temple.png" alt="Sri Venugopala Swamy Temple" />
+    <div class="qr-name">Sri Venugopala Swamy Temple</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_55_royal_orchid_metropole.png" alt="Royal Orchid Metropole" />
+    <div class="qr-name">Royal Orchid Metropole</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_56_fortune_jp_palace.png" alt="Fortune JP Palace" />
+    <div class="qr-name">Fortune JP Palace</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_57_jal_mahal_resort___spa.png" alt="Jal Mahal Resort & Spa" />
+    <div class="qr-name">Jal Mahal Resort & Spa</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_58_gokulam_ashtanga_yoga_hub.png" alt="Gokulam Ashtanga Yoga Hub" />
+    <div class="qr-name">Gokulam Ashtanga Yoga Hub</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_59_melody_world_wax_museum.png" alt="Melody World Wax Museum" />
+    <div class="qr-name">Melody World Wax Museum</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_60_kodi_someshwara_temple.png" alt="Kodi Someshwara Temple" />
+    <div class="qr-name">Kodi Someshwara Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_61_jayalakshmi_vilas_mansion.png" alt="Jayalakshmi Vilas Mansion" />
+    <div class="qr-name">Jayalakshmi Vilas Mansion</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_62_mysore_palace_light_show.png" alt="Mysore Palace Light Show" />
+    <div class="qr-name">Mysore Palace Light Show</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_63_mysore_sand_sculpture_festival.png" alt="Mysore Sand Sculpture Festival" />
+    <div class="qr-name">Mysore Sand Sculpture Festival</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_64_dasara_exhibition_ground.png" alt="Dasara Exhibition Ground" />
+    <div class="qr-name">Dasara Exhibition Ground</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_65_cftri_science_park.png" alt="CFTRI Science Park" />
+    <div class="qr-name">CFTRI Science Park</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_66_government_silk_weaving_factory.png" alt="Government Silk Weaving Factory" />
+    <div class="qr-name">Government Silk Weaving Factory</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_67_ranganathittu_bird_sanctuary.png" alt="Ranganathittu Bird Sanctuary" />
+    <div class="qr-name">Ranganathittu Bird Sanctuary</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_68_tipu_sultan_s_summer_palace.png" alt="Tipu Sultan's Summer Palace" />
+    <div class="qr-name">Tipu Sultan's Summer Palace</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_69_gumbaz_mausoleum.png" alt="Gumbaz Mausoleum" />
+    <div class="qr-name">Gumbaz Mausoleum</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_70_mysore_city_bus_stand_heritage_walk.png" alt="Mysore City Bus Stand Heritage Walk" />
+    <div class="qr-name">Mysore City Bus Stand Heritage Walk</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_71_indira_gandhi_rashtriya_manav_sangrahalaya.png" alt="Indira Gandhi Rashtriya Manav Sangrahalaya" />
+    <div class="qr-name">Indira Gandhi Rashtriya Manav Sangrahalaya</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_72_shweta_varaha_swamy_temple.png" alt="Shweta Varaha Swamy Temple" />
+    <div class="qr-name">Shweta Varaha Swamy Temple</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_73_ranganathaswamy_temple.png" alt="Ranganathaswamy Temple" />
+    <div class="qr-name">Ranganathaswamy Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_74_narasimhaswamy_temple.png" alt="Narasimhaswamy Temple" />
+    <div class="qr-name">Narasimhaswamy Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_75_biligiriranga_temple.png" alt="Biligiriranga Temple" />
+    <div class="qr-name">Biligiriranga Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_76_nimishamba_temple.png" alt="Nimishamba Temple" />
+    <div class="qr-name">Nimishamba Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_77_lakshmi_ramana_swamy_temple.png" alt="Lakshmi Ramana Swamy Temple" />
+    <div class="qr-name">Lakshmi Ramana Swamy Temple</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_78_talacauvery___kaveri_origin.png" alt="Talacauvery — Kaveri Origin" />
+    <div class="qr-name">Talacauvery — Kaveri Origin</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_79_nagarhole_tiger_reserve.png" alt="Nagarhole Tiger Reserve" />
+    <div class="qr-name">Nagarhole Tiger Reserve</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_80_bandipur_national_park.png" alt="Bandipur National Park" />
+    <div class="qr-name">Bandipur National Park</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_81_kabini_backwaters.png" alt="Kabini Backwaters" />
+    <div class="qr-name">Kabini Backwaters</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_82_chunchanakatte_waterfalls.png" alt="Chunchanakatte Waterfalls" />
+    <div class="qr-name">Chunchanakatte Waterfalls</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_83_shivasamudram_falls.png" alt="Shivasamudram Falls" />
+    <div class="qr-name">Shivasamudram Falls</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_84_dubare_elephant_camp.png" alt="Dubare Elephant Camp" />
+    <div class="qr-name">Dubare Elephant Camp</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_85_iruppu_falls.png" alt="Iruppu Falls" />
+    <div class="qr-name">Iruppu Falls</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_86_coorg_coffee_plantations.png" alt="Coorg Coffee Plantations" />
+    <div class="qr-name">Coorg Coffee Plantations</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_87_lingambudhi_lake.png" alt="Lingambudhi Lake" />
+    <div class="qr-name">Lingambudhi Lake</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_88_evolve_back__orange_county_.png" alt="Evolve Back (Orange County)" />
+    <div class="qr-name">Evolve Back (Orange County)</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_89_the_tamara_coorg.png" alt="The Tamara Coorg" />
+    <div class="qr-name">The Tamara Coorg</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_90_club_mahindra_madikeri.png" alt="Club Mahindra Madikeri" />
+    <div class="qr-name">Club Mahindra Madikeri</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_91_jungle_lodges___kabini.png" alt="Jungle Lodges — Kabini" />
+    <div class="qr-name">Jungle Lodges — Kabini</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_92_coorg_wilderness_resort.png" alt="Coorg Wilderness Resort" />
+    <div class="qr-name">Coorg Wilderness Resort</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_93_ritz_carlton_bangalore__day_trip_base_.png" alt="Ritz Carlton Bangalore (Day trip base)" />
+    <div class="qr-name">Ritz Carlton Bangalore (Day trip base)</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_94_mysore_county_club___retreat.png" alt="Mysore County Club & Retreat" />
+    <div class="qr-name">Mysore County Club & Retreat</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_95_grand_mercure_mysore.png" alt="Grand Mercure Mysore" />
+    <div class="qr-name">Grand Mercure Mysore</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_96_mysore_pak___sri_krishna_sweets.png" alt="Mysore Pak — Sri Krishna Sweets" />
+    <div class="qr-name">Mysore Pak — Sri Krishna Sweets</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_97_depth_n_green_cafe.png" alt="Depth N Green Cafe" />
+    <div class="qr-name">Depth N Green Cafe</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_98_hotel_mylari_omelette_centre.png" alt="Hotel Mylari Omelette Centre" />
+    <div class="qr-name">Hotel Mylari Omelette Centre</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_99_bombay_tiffanys.png" alt="Bombay Tiffanys" />
+    <div class="qr-name">Bombay Tiffanys</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_100_oyster_bay_restaurant.png" alt="Oyster Bay Restaurant" />
+    <div class="qr-name">Oyster Bay Restaurant</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_101_cafe_aramane.png" alt="Cafe Aramane" />
+    <div class="qr-name">Cafe Aramane</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_102_halli_mane__rajamahal_.png" alt="Halli Mane (Rajamahal)" />
+    <div class="qr-name">Halli Mane (Rajamahal)</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_103_coorg_cuisine_at_tamara.png" alt="Coorg Cuisine at Tamara" />
+    <div class="qr-name">Coorg Cuisine at Tamara</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_104_krishnarajasagar_dam__krs_.png" alt="Krishnarajasagar Dam (KRS)" />
+    <div class="qr-name">Krishnarajasagar Dam (KRS)</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_105_mysore_agarbathi_market.png" alt="Mysore Agarbathi Market" />
+    <div class="qr-name">Mysore Agarbathi Market</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_106_jaganmohan_art_gallery_underground.png" alt="Jaganmohan Art Gallery Underground" />
+    <div class="qr-name">Jaganmohan Art Gallery Underground</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_107_raja_s_seat__madikeri_.png" alt="Raja's Seat (Madikeri)" />
+    <div class="qr-name">Raja's Seat (Madikeri)</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_108_mysore_sandalwood_factory.png" alt="Mysore Sandalwood Factory" />
+    <div class="qr-name">Mysore Sandalwood Factory</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_109_tibetan_market_bylakuppe.png" alt="Tibetan Market Bylakuppe" />
+    <div class="qr-name">Tibetan Market Bylakuppe</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_110_mysore_flower_auction_market.png" alt="Mysore Flower Auction Market" />
+    <div class="qr-name">Mysore Flower Auction Market</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_111_srirangapatna_island_walk.png" alt="Srirangapatna Island Walk" />
+    <div class="qr-name">Srirangapatna Island Walk</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_112_srirangapatna_woodcarving_hub.png" alt="Srirangapatna Woodcarving Hub" />
+    <div class="qr-name">Srirangapatna Woodcarving Hub</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_113_ganjam_doll_clusters.png" alt="Ganjam Doll Clusters" />
+    <div class="qr-name">Ganjam Doll Clusters</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_114_neerav_arts_village.png" alt="NeeRav Arts Village" />
+    <div class="qr-name">NeeRav Arts Village</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_115_karakushala_nagara_artisan_colony.png" alt="Karakushala Nagara Artisan Colony" />
+    <div class="qr-name">Karakushala Nagara Artisan Colony</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_116_preetham_handicrafts.png" alt="Preetham Handicrafts" />
+    <div class="qr-name">Preetham Handicrafts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_117_arun_fine_arts.png" alt="Arun Fine Arts" />
+    <div class="qr-name">Arun Fine Arts</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_118_karnataka_fine_arts.png" alt="Karnataka fine arts" />
+    <div class="qr-name">Karnataka fine arts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_119_sri_geetha_fine_arts.png" alt="Sri Geetha Fine Arts" />
+    <div class="qr-name">Sri Geetha Fine Arts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_120_bharath_handicrafts.png" alt="Bharath Handicrafts" />
+    <div class="qr-name">Bharath Handicrafts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_121_sri_sathya_sharade_handicrafts.png" alt="Sri Sathya Sharade Handicrafts" />
+    <div class="qr-name">Sri Sathya Sharade Handicrafts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_122_shakthivel_arts_and_crafts.png" alt="Shakthivel Arts and Crafts" />
+    <div class="qr-name">Shakthivel Arts and Crafts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_123_varnam_craft_collective.png" alt="VARNAM CRAFT COLLECTIVE" />
+    <div class="qr-name">VARNAM CRAFT COLLECTIVE</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_124_ramsons_handicrafts.png" alt="Ramsons Handicrafts" />
+    <div class="qr-name">Ramsons Handicrafts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_125_cottage_gifts_crafts_bazaar.png" alt="Cottage gifts crafts bazaar" />
+    <div class="qr-name">Cottage gifts crafts bazaar</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_126_the_heritage_art_and_crafts.png" alt="The Heritage Art and Crafts" />
+    <div class="qr-name">The Heritage Art and Crafts</div>
+  </div>
+</div>
+<div class="page">
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_127_sahara_arts_and_crafts_exhibition.png" alt="Sahara Arts and Crafts Exhibition" />
+    <div class="qr-name">Sahara Arts and Crafts Exhibition</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_128_village_arts.png" alt="Village arts" />
+    <div class="qr-name">Village arts</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_129_mysuru_silk_udyog___cauvery_handicraft.png" alt="Mysuru Silk Udyog & Cauvery Handicraft" />
+    <div class="qr-name">Mysuru Silk Udyog & Cauvery Handicraft</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_130_jaganmohana_palace_gallery.png" alt="Jaganmohana Palace Gallery" />
+    <div class="qr-name">Jaganmohana Palace Gallery</div>
+  </div>
+  <div class="qr-cell">
+    <img class="qr-image" src="all_qrs/gem_131_itsy_bitsy.png" alt="itsy Bitsy" />
+    <div class="qr-name">itsy Bitsy</div>
+  </div>
+  <div class="qr-cell" style="border: none;"></div>
+  <div class="qr-cell" style="border: none;"></div>
+  <div class="qr-cell" style="border: none;"></div>
+  <div class="qr-cell" style="border: none;"></div>
+</div>
+</body></html>

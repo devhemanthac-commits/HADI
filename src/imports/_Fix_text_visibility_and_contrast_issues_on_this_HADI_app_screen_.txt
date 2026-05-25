@@ -1,0 +1,29 @@
+"Fix text visibility and contrast issues on this HADI app screen:
+
+
+- Make the main title 'Hex Map' much bolder, larger, and highly visible using a **dark teal or deep charcoal color** (#132F2A or #1C2C2A) for strong contrast against the light yellowish-white background.
+- Fix the subtitle 'xplore Mysuru by zone' — make it fully opaque, darker, and clearly readable.
+- Ensure ALL text across the screen is crisp, sharp, high-contrast, and glitch-free:
+  - Sidebar menu items (Home, Discover, Map, Hex Zones, Community, Events, Buddy, Leaderboard, Profile)
+  - Legend in top-right (Explored, Active, Gem Zone, Locked)
+  - User section at bottom-left ('Hemanth', 'Urban Explorer', '1,850 pts')
+- Keep the left sidebar in dark teal and the main content area in soft yellowish-white.
+- Do not change the hexagonal map colors or layout — just improve text rendering and contrast.
+- Overall: Dramatically improve readability and typography while keeping the clean, modern explorer app aesthetic.
+
+
+The app name is HADI — Your Guide to Hidden Mysuru."
+
+
+---
+
+
+### Additional Quick Fixes in Figma (Manual):
+- Select the "Hex Map" text layer → Change fill color to a dark shade (e.g., `#0F2A26` or pure black `#111111`).
+- Increase font weight to **Bold** or **Semi-Bold** and size by 4–8px.
+- Do the same for the subtitle.
+- Check text layers for any **opacity < 100%** and set to 100%.
+- Add a subtle drop shadow or text shadow if needed for extra pop on the light background.
+
+
+Would you like me to generate another edited version with even stronger contrast (e.g., pure black text) or adjust the background to a slightly warmer tone for better readability? Just describe what you want next!
