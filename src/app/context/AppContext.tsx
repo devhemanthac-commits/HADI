@@ -38,6 +38,9 @@ interface AppContextType {
   userCoords: Coords | null;
   locationStatus: LocationStatus;
   requestLocation: () => void;
+  // Buddy System (Safety & Planning AI)
+  buddySystemEnabled: boolean;
+  toggleBuddySystem: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -87,6 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [savedGems, setSavedGems] = useState<Set<number>>(() => loadSet("hadi_savedGems", []));
   const [savedPlaces, setSavedPlaces] = useState<Set<string>>(() => loadStringSet("hadi_savedPlaces", []));
   const [userName, setUserNameState] = useState(() => loadString("hadi_userName", ""));
+  const [buddySystemEnabled, setBuddySystemEnabled] = useState(() => loadBool("hadi_buddySystem", false));
 
   // ── Geolocation ──────────────────────────────────────────────────────────────
   const [userCoords, setUserCoords] = useState<Coords | null>(null);
@@ -138,6 +142,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const toggleDarkMode = useCallback(() => setDarkMode((v) => !v), []);
   const toggleLocalMode = useCallback(() => setLocalMode((v) => !v), []);
+  const toggleBuddySystem = useCallback(() => {
+    setBuddySystemEnabled((v) => {
+      const next = !v;
+      try { localStorage.setItem("hadi_buddySystem", String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   const toggleSaved = useCallback((id: number) => {
     setSavedGems((prev) => {
@@ -191,6 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isSavedPlace,
         userName, setUserName,
         userCoords, locationStatus, requestLocation,
+        buddySystemEnabled, toggleBuddySystem,
       }}
     >
       {children}

@@ -175,24 +175,64 @@ export function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const C = useColors();
-  const { addToast, toggleSaved, isSaved, userName, userCoords, locationStatus, requestLocation } = useApp();
+  const { addToast, toggleSaved, isSaved, userName, userCoords, locationStatus, requestLocation, buddySystemEnabled, toggleBuddySystem } = useApp();
   const { stats, leaderboard, visitedGemIds } = useGame();
   const myRank = leaderboard.find((e) => e.userId === stats.userId)?.rank ?? "—";
 
+  // ── Safety Buddy System Logic ────────────────────────────────────────────────
+  const DANGER_ZONES = useMemo(() => [
+    { id: "dz1", name: "Devaraja Market (Eastern Gate)", lat: 12.3086, lng: 76.6515, radiusM: 300, reason: "Heavy crowd density detected. High risk of pickpocketing." },
+    { id: "dz2", name: "Kukkarahalli Lake Deep Trail", lat: 12.3021, lng: 76.6322, radiusM: 400, reason: "Wildlife movement. Unsafe after dusk." }
+  ], []);
+
+  const activeDangerZone = useMemo(() => {
+    if (!buddySystemEnabled || !userCoords) return null;
+    for (const dz of DANGER_ZONES) {
+      if (haversineDistance(userCoords, { lat: dz.lat, lng: dz.lng }) <= dz.radiusM) {
+        return dz;
+      }
+    }
+    // Simulate user being in dz1 if no real coords but buddy is enabled (for demo)
+    return DANGER_ZONES[0]; 
+  }, [userCoords, buddySystemEnabled, DANGER_ZONES]);
+
   // ── Nearby gems sorted by distance from live location ────────────────────────
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+
   const nearbyGems = useMemo(() => {
     if (!userCoords) return [];
     return allGems
       .filter((g) => !visitedGemIds.has(g.id))
+      .filter((g) => {
+        // Buddy System strict safety filtering
+        if (buddySystemEnabled && g.safety < 70) return false;
+        return true;
+      })
       .map((g) => {
         // gem coords come from GameStore gemStates; fall back to rough Mysuru centre
         const gemCoords = { lat: 12.295 + (g.id * 0.005) % 0.1, lng: 76.644 + (g.id * 0.003) % 0.08 };
         const distM = haversineDistance(userCoords, gemCoords);
-        return { ...g, distM };
+        
+        let timeNote = null;
+        let timeColor = "#A39A88";
+        if (buddySystemEnabled && weatherData && g.weatherProfile) {
+          const isRisk = g.weatherProfile.riskConditions.includes(weatherData.condition);
+          const isIdeal = g.weatherProfile.idealConditions.includes(weatherData.condition);
+          if (isRisk) {
+             timeNote = "Unsafe weather. Visit tomorrow.";
+             timeColor = "#ef4444";
+          } else if (isIdeal) {
+             timeNote = "Perfect time to visit!";
+             timeColor = "#22c55e";
+          } else {
+             timeNote = "Okay to visit now.";
+          }
+        }
+        return { ...g, distM, timeNote, timeColor };
       })
       .sort((a, b) => a.distM - b.distM)
       .slice(0, 4);
-  }, [userCoords, visitedGemIds]);
+  }, [userCoords, visitedGemIds, buddySystemEnabled, weatherData]);
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [alertDismissed, setAlertDismissed] = useState(false);
@@ -202,8 +242,6 @@ export function Home() {
   const [recentSearches] = useState(["Rangoli Art", "Filter Coffee", "Puppet Workshop"]);
   const searchRef = useRef<HTMLDivElement>(null);
   
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
-
   // Fetch Live Weather
   useEffect(() => {
     fetchLiveWeather().then(w => {
@@ -297,17 +335,35 @@ export function Home() {
             <span className="font-dm text-[9px] font-bold tracking-wider uppercase" style={{ color: "rgba(255,255,255,0.4)" }}>Streak</span>
           </div>
         </div>
+
+        {/* Buddy System Toggle overlaying Hero Card */}
+        <div className="absolute top-6 right-6 flex items-center gap-2 z-20">
+          <span className="font-dm text-xs font-bold" style={{ color: buddySystemEnabled ? "#22c55e" : "rgba(255,255,255,0.5)" }}>
+            🛡️ Buddy System
+          </span>
+          <button 
+            onClick={toggleBuddySystem}
+            className="w-10 h-5 rounded-full relative transition-colors duration-300 pressable"
+            style={{ background: buddySystemEnabled ? "#22c55e" : "rgba(255,255,255,0.2)" }}
+          >
+            <div 
+              className="absolute top-0.5 bg-white rounded-full transition-transform duration-300"
+              style={{ width: 16, height: 16, left: 2, transform: buddySystemEnabled ? "translateX(20px)" : "translateX(0)" }}
+            />
+          </button>
+        </div>
       </div>
 
-      {/* Safety Alert Strip */}
-      {!alertDismissed && (
-        <div className="rounded-[14px] px-4 py-3 flex items-start gap-3" style={{ background: "#fef3c7", border: "1px solid rgba(201,146,31,0.25)" }}>
-          <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+      {/* Safety Alert Strip (Dynamic Danger Zone) */}
+      {!alertDismissed && activeDangerZone && (
+        <div className="rounded-[14px] px-4 py-3 flex items-start gap-3 animate-pulse" style={{ background: "rgba(239, 68, 68, 0.15)", border: "2px solid rgba(239, 68, 68, 0.4)" }}>
+          <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>🚨</span>
           <div className="flex-1 min-w-0">
-            <span className="font-dm" style={{ color: "#92400e", fontWeight: 600, fontSize: 13 }}>Devaraja Market — </span>
-            <span className="font-dm" style={{ color: "#92400e", fontSize: 13 }}>Heavy crowd expected today. Exercise caution near the eastern gate.</span>
+            <span className="font-dm block" style={{ color: "#f87171", fontWeight: 800, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>Danger Zone Alert</span>
+            <span className="font-dm" style={{ color: "#fca5a5", fontWeight: 600, fontSize: 13 }}>{activeDangerZone.name} — </span>
+            <span className="font-dm" style={{ color: "rgba(255,255,255,0.85)", fontSize: 13 }}>{activeDangerZone.reason}</span>
           </div>
-          <button onClick={() => setAlertDismissed(true)} style={{ color: "#92400e", background: "none", border: "none", cursor: "pointer", fontSize: 18, lineHeight: 1, flexShrink: 0, padding: 0, opacity: 0.6 }}>×</button>
+          <button onClick={() => setAlertDismissed(true)} style={{ color: "#f87171", background: "none", border: "none", cursor: "pointer", fontSize: 22, lineHeight: 1, flexShrink: 0, padding: 0, opacity: 0.8 }}>×</button>
         </div>
       )}
 
@@ -379,8 +435,18 @@ export function Home() {
                     <span className="relative z-10 text-2xl" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))" }}>{gem.emoji}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-dm font-bold text-sm tracking-tight mb-0.5 transition-colors group-hover/card:text-[#E07B2A]" style={{ color: C.text }}>{gem.name}</p>
+                    <p className="font-dm font-bold text-sm tracking-tight mb-0.5 transition-colors group-hover/card:text-[#E07B2A]" style={{ color: C.text }}>
+                      {gem.name} {buddySystemEnabled && <span style={{fontSize: 12}} title={`Safety Score: ${gem.safety}`}>🛡️</span>}
+                    </p>
                     <p className="font-dm text-xs opacity-75" style={{ color: C.muted }}>{gem.location}</p>
+                    
+                    {/* Buddy System Time Recommendation */}
+                    {buddySystemEnabled && gem.timeNote && (
+                      <p className="font-dm text-[11px] font-bold mt-0.5" style={{ color: gem.timeColor }}>
+                        🕒 {gem.timeNote}
+                      </p>
+                    )}
+
                     <div className="flex items-center gap-2 mt-1 text-[11px]">
                       <span className="font-dm font-semibold" style={{ color: gem.rarityTierColor }}>{gem.rarityTier}</span>
                       <span style={{ color: C.border }}>·</span>
