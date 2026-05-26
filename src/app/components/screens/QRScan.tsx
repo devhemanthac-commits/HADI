@@ -137,7 +137,7 @@ export function QRScan() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto"
+      className="min-h-[100dvh] w-full flex flex-col items-center overflow-y-auto"
       style={{ background: "#0A1A1A" }}
     >
       {/* Dynamic Keyframes Injected */}

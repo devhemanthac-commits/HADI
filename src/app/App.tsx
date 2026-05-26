@@ -72,7 +72,7 @@ function AuthenticatedApp() {
   }
 
   return (
-    <div className="animate-app-fade-up">
+    <div className="animate-app-fade-up min-h-[100dvh] w-full">
       <RouterProvider router={router} />
     </div>
   );
