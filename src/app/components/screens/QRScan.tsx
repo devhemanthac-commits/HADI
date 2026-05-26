@@ -1,26 +1,9 @@
-import { useState, useEffect, useMemo, Component, ErrorInfo, ReactNode } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useApp } from "../../context/AppContext";
 import { useGame } from "../../store/GameStore";
 import { generateGemQR } from "../../engine/checkin";
-import { Scanner } from "@yudiel/react-qr-scanner";
-
-class ScannerErrorBoundary extends Component<{ children: ReactNode; onError: (err: Error) => void }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode; onError: (err: Error) => void }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    this.props.onError(error);
-  }
-  render() {
-    if (this.state.hasError) return null;
-    return this.props.children;
-  }
-}
+import { Html5Qrcode } from "html5-qrcode";
 
 export function QRScan() {
   const navigate = useNavigate();
@@ -64,14 +47,75 @@ export function QRScan() {
   };
 
   useEffect(() => {
-    // Phase success no longer handled here locally, we redirect immediately instead
-  }, []);
+    let html5QrCode: Html5Qrcode | null = null;
+    
+    const startScanner = async () => {
+      try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { 
+          fps: 15, 
+          qrbox: (width: number, height: number) => {
+            const size = Math.min(width, height) * 0.85;
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.0
+        };
+
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            if (decodedText) {
+              handleManualVerify(decodedText);
+            }
+          },
+          () => {
+            // silent scan failure
+          }
+        );
+      } catch (err: any) {
+        console.error("Failed to start QR scanner:", err);
+        setErrorMessage(
+          err?.message || 
+          "Failed to access device camera. Please make sure location and camera permissions are enabled in your browser settings."
+        );
+      }
+    };
+
+    const timer = setTimeout(() => {
+      startScanner();
+    }, 400);
+
+    return () => {
+      clearTimeout(timer);
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch((e) => console.error("Failed to stop scanner on unmount:", e));
+      }
+    };
+  }, [gemId]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto"
       style={{ background: "#0A1A1A" }}
     >
+      {/* Dynamic Keyframes Injected */}
+      <style>{`
+        @keyframes scanLaser {
+          0% { top: 0%; opacity: 0.4; }
+          50% { top: 100%; opacity: 1; }
+          100% { top: 0%; opacity: 0.4; }
+        }
+        #qr-reader video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+        }
+        #qr-reader {
+          border: none !important;
+        }
+      `}</style>
+
       {/* Header */}
       <div className="w-full flex items-center gap-4 px-5 pt-12 pb-6">
         <button
@@ -108,22 +152,25 @@ export function QRScan() {
             {/* Scan Frame */}
             <div
               className="relative mb-8 rounded-[16px] overflow-hidden"
-              style={{ width: 280, height: 280, border: "2px solid rgba(224,123,42,0.4)", background: "rgba(0,0,0,0.5)" }}
+              style={{ 
+                width: 280, 
+                height: 280, 
+                border: "2px solid rgba(224,123,42,0.4)", 
+                background: "rgba(0,0,0,0.5)",
+                boxShadow: "0 0 25px rgba(224, 123, 42, 0.15)"
+              }}
             >
-              <ScannerErrorBoundary onError={(err) => setErrorMessage(err.message || "Failed to initialize camera scanner.")}>
-                <Scanner 
-                  onScan={(result: any) => {
-                    if (result && result.length > 0 && result[0].rawValue) {
-                      handleManualVerify(result[0].rawValue);
-                    }
-                  }}
-                  onError={(err: any) => {
-                    setErrorMessage(err?.message || "Camera access denied or no camera found. Please enter code manually.");
-                  }}
-                  components={{ tracker: true, audio: false }}
-                  styles={{ container: { width: "100%", height: "100%" } }}
-                />
-              </ScannerErrorBoundary>
+              <div id="qr-reader" style={{ width: "100%", height: "100%" }} />
+
+              {/* Laser Scanning Line Animation (Google Lens laser scanner effect) */}
+              <div 
+                className="absolute left-0 right-0 h-[2.5px] bg-[#E07B2A] shadow-[0_0_12px_#E07B2A,0_0_4px_#E07B2A]"
+                style={{
+                  animation: "scanLaser 3s ease-in-out infinite",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                }}
+              />
 
               {/* Corner brackets */}
               <CornerBracket position="top-left" />
@@ -133,10 +180,10 @@ export function QRScan() {
             </div>
 
             <p
-              className="font-dm mb-3 text-center"
-              style={{ color: "rgba(255,255,255,0.55)", fontSize: 14 }}
+              className="font-dm mb-3 text-center animate-pulse"
+              style={{ color: "rgba(255,255,255,0.75)", fontSize: 13.5, fontWeight: 500 }}
             >
-              Point your camera at the QR code
+              Align QR Code inside Google Lens scanner
             </p>
 
             {/* GPS status */}
