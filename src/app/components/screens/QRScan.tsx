@@ -1,11 +1,39 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Component, ErrorInfo, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useApp } from "../../context/AppContext";
 import { useGame } from "../../store/GameStore";
 import { generateGemQR } from "../../engine/checkin";
-import jsQR from "jsqr";
+import QrScanner from "qr-scanner";
 
-export function QRScan() {
+// ── Extreme Error Boundary to guarantee no white screens ──────────────
+class QRScannerErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMsg: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMsg: error.message || String(error) };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("QRScan CRITICAL CRASH:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-8 bg-black text-red-500 font-mono text-xs break-all z-50">
+          <h1 className="text-xl font-bold mb-4">CRITICAL SCANNER CRASH</h1>
+          <p>{this.state.errorMsg}</p>
+          <button onClick={() => window.location.reload()} className="mt-8 px-4 py-2 bg-red-600 text-white rounded">
+            Reload App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function QRScanInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useApp();
@@ -19,29 +47,20 @@ export function QRScan() {
   const [phase, setPhase] = useState<"scanning" | "success">("scanning");
   const [showToast, setShowToast] = useState(false);
   const [awardedPoints, setAwardedPoints] = useState(gemPoints);
-
-  const [manualCode, setManualCode] = useState("");
-  const [showManualInput, setShowManualInput] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const validQRString = useMemo(() => generateGemQR(gemId, Date.now()), [gemId]);
 
-  // Refs for custom camera implementation
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const scannerRef = useRef<QrScanner | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleManualVerify = async (code: string) => {
     setErrorMessage("");
-    
-    // Sync with local Zustand game engine
     const result = doCheckin(gemId, "qr", undefined, 5, code);
     
     if (result.valid) {
-      // Stop the camera as soon as we succeed
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      if (scannerRef.current) scannerRef.current.stop();
       const points = result.pointsAwarded || gemPoints;
       navigate("/", { state: { checkinSuccess: true, points, gemName } });
     } else {
@@ -50,147 +69,88 @@ export function QRScan() {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(validQRString);
-    addToast("info", "📋 QR string copied!");
-  };
-
-  // Setup the camera and QR detection loop
   useEffect(() => {
-    let animationFrameId: number;
-    let isComponentMounted = true;
-
-    const startScanner = async () => {
+    let isMounted = true;
+    
+    if (videoRef.current && phase === "scanning") {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
-        });
-        
-        if (!isComponentMounted) {
-          // If the component unmounted before the camera initialized, stop it.
-          stream.getTracks().forEach(track => track.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          // Safari requires playsInline, or it defaults to a broken fullscreen
-          videoRef.current.setAttribute("playsinline", "true"); 
-          videoRef.current.play();
-          animationFrameId = requestAnimationFrame(tick);
-        }
-      } catch (err: any) {
-        console.error("Failed to start camera:", err);
-        if (err.name === "NotAllowedError") {
-          setErrorMessage("Camera access denied. Please enable camera permissions in your browser settings.");
-        } else if (err.name === "NotFoundError") {
-          setErrorMessage("No camera found on this device.");
-        } else {
-          setErrorMessage(err.message || "Failed to access device camera.");
-        }
-      }
-    };
-
-    const tick = () => {
-      if (
-        videoRef.current && 
-        videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
-      ) {
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const context = canvas.getContext("2d", { willReadFrequently: true });
-          if (context) {
-            canvas.height = videoRef.current.videoHeight;
-            canvas.width = videoRef.current.videoWidth;
-            context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-            
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert",
-            });
-
-            if (code && code.data) {
-              handleManualVerify(code.data);
-              return; // Stop the tick loop
-            }
+        const scanner = new QrScanner(
+          videoRef.current,
+          (result) => {
+            if (!isMounted) return;
+            handleManualVerify(result.data);
+          },
+          {
+            onDecodeError: (error) => {
+              // Ignore standard decode errors (it happens on every frame without a QR code)
+            },
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+            maxScansPerSecond: 10,
           }
+        );
+        scannerRef.current = scanner;
+
+        scanner.start().catch((e) => {
+          if (!isMounted) return;
+          console.error("[HADI] Camera start failed", e);
+          if (e === "Camera not found.") {
+            setErrorMessage("No camera found on this device.");
+          } else {
+            setErrorMessage("Camera access denied or unavailable. Please use the image upload fallback below.");
+          }
+        });
+      } catch (e: any) {
+        if (isMounted) {
+          setErrorMessage(e.message || "Failed to initialize scanner.");
         }
       }
-      animationFrameId = requestAnimationFrame(tick);
-    };
-
-    const timer = setTimeout(() => {
-      startScanner();
-    }, 300);
+    }
 
     return () => {
-      isComponentMounted = false;
-      clearTimeout(timer);
-      cancelAnimationFrame(animationFrameId);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+      isMounted = false;
+      if (scannerRef.current) {
+        scannerRef.current.stop();
+        scannerRef.current.destroy();
+        scannerRef.current = null;
       }
     };
-  }, [gemId]);
+  }, [gemId, phase]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setErrorMessage("");
+      const result = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
+      if (result && result.data) {
+        handleManualVerify(result.data);
+      }
+    } catch (e: any) {
+      setErrorMessage("No QR code found in that image. Try again.");
+    }
+  };
 
   return (
-    <div
-      className="min-h-[100dvh] w-full flex flex-col items-center overflow-y-auto"
-      style={{ background: "#0A1A1A" }}
-    >
-      {/* Dynamic Keyframes Injected */}
-      <style>{`
-        @keyframes scanLaser {
-          0% { top: 0%; opacity: 0.4; }
-          50% { top: 100%; opacity: 1; }
-          100% { top: 0%; opacity: 0.4; }
-        }
-      `}</style>
-
-      {/* Header */}
+    <div className="min-h-[100dvh] w-full flex flex-col items-center bg-[#0A1A1A]">
       <div className="w-full flex items-center gap-4 px-5 pt-12 pb-6">
         <button
           onClick={() => navigate(-1)}
-          style={{
-            background: "rgba(255,255,255,0.1)",
-            border: "none",
-            borderRadius: "50%",
-            width: 40,
-            height: 40,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#fff",
-            fontSize: 18,
-            flexShrink: 0,
-          }}
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white flex-shrink-0 cursor-pointer"
         >
           ←
         </button>
-        <h1
-          className="font-playfair"
-          style={{ color: "#fff", fontSize: 20, fontWeight: 700 }}
-        >
-          Scan to Verify
-        </h1>
+        <h1 className="font-playfair text-white text-xl font-bold">Scan to Verify</h1>
       </div>
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 w-full">
-        {phase === "scanning" ? (
+      <div className="flex-1 flex flex-col items-center justify-center px-8 w-full max-w-sm mx-auto">
+        {phase === "scanning" && (
           <>
-            {/* Scan Frame */}
-            <div
-              className="relative mb-8 rounded-[16px] overflow-hidden bg-black flex items-center justify-center"
-              style={{ 
-                width: 280, 
-                height: 280, 
-                border: "2px solid rgba(224,123,42,0.4)", 
-                boxShadow: "0 0 25px rgba(224, 123, 42, 0.15)"
-              }}
+            {/* Standard Nimiq Video Container */}
+            <div 
+              className="relative mb-6 rounded-2xl overflow-hidden bg-black flex items-center justify-center border-2 border-[#E07B2A]/40 shadow-[0_0_25px_rgba(224,123,42,0.15)]"
+              style={{ width: "100%", aspectRatio: "1/1" }}
             >
               <video 
                 ref={videoRef} 
@@ -199,348 +159,58 @@ export function QRScan() {
                 muted 
                 autoPlay 
               />
-              <canvas ref={canvasRef} className="hidden" />
-
-              {/* Laser Scanning Line Animation (Google Lens laser scanner effect) */}
-              <div 
-                className="absolute left-0 right-0 h-[2.5px] bg-[#E07B2A] shadow-[0_0_12px_#E07B2A,0_0_4px_#E07B2A]"
-                style={{
-                  animation: "scanLaser 3s ease-in-out infinite",
-                  zIndex: 2,
-                  pointerEvents: "none",
-                }}
-              />
-
-              {/* Corner brackets */}
-              <CornerBracket position="top-left" />
-              <CornerBracket position="top-right" />
-              <CornerBracket position="bottom-left" />
-              <CornerBracket position="bottom-right" />
             </div>
 
-            <p
-              className="font-dm mb-3 text-center animate-pulse"
-              style={{ color: "rgba(255,255,255,0.75)", fontSize: 13.5, fontWeight: 500 }}
-            >
-              Align QR Code inside Google Lens scanner
+            <p className="font-dm text-white/70 text-sm mb-6 text-center">
+              Align QR Code inside the scanner
             </p>
 
-            {/* GPS status */}
-            <div className="flex items-center gap-2 mb-6">
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "#22c55e",
-                  boxShadow: "0 0 6px rgba(34,197,94,0.7)",
-                }}
-              />
-              <span
-                className="font-dm"
-                style={{ color: "#22c55e", fontSize: 13, fontWeight: 500 }}
-              >
-                GPS Verified · Lakshmipuram
+            {errorMessage && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-500 text-sm p-4 rounded-xl mb-6 text-center w-full">
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Foolproof Image Upload Fallback */}
+            <div className="w-full flex flex-col items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-4">
+              <span className="font-playfair text-white/90 font-bold text-sm">
+                Camera not working?
               </span>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-[#E07B2A] text-white px-5 py-2 rounded-full font-dm text-sm font-bold shadow-lg"
+              >
+                Upload QR Image
+              </button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*" 
+                capture="environment"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </div>
 
-            {/* Manual entry link */}
-            <button
-              onClick={() => setShowManualInput(!showManualInput)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "rgba(255,255,255,0.35)",
-                fontSize: 13,
-                cursor: "pointer",
-                textDecoration: "underline",
-                fontFamily: "inherit",
-                marginBottom: 8,
-              }}
-            >
-              {showManualInput ? "Hide manual entry" : "Or enter code manually"}
-            </button>
-
-            {showManualInput && (
-              <div
-                className="mt-2 mb-6 flex flex-col gap-3 w-full max-w-xs animate-fade-in"
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 12,
-                  padding: 14,
-                }}
+            <div className="mt-8 flex flex-col gap-2 w-full">
+              <button
+                onClick={() => handleManualVerify(validQRString)}
+                className="w-full bg-white/10 border border-white/20 rounded-lg text-white font-dm text-xs font-bold py-3"
               >
-                <input
-                  type="text"
-                  placeholder="Paste time-sensitive QR string"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  style={{
-                    background: "rgba(0,0,0,0.25)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    borderRadius: 8,
-                    padding: "8px 10px",
-                    color: "#fff",
-                    fontSize: 12.5,
-                    fontFamily: "monospace",
-                    width: "100%",
-                    outline: "none",
-                  }}
-                />
-                <button
-                  onClick={() => handleManualVerify(manualCode)}
-                  className="pressable"
-                  style={{
-                    background: "linear-gradient(135deg, #E07B2A, #C9921F)",
-                    border: "none",
-                    borderRadius: 8,
-                    color: "#fff",
-                    fontWeight: 700,
-                    padding: "9px",
-                    fontSize: 12.5,
-                    cursor: "pointer",
-                  }}
-                >
-                  Verify Code
-                </button>
-              </div>
-            )}
-
-            {/* Error Message Panel */}
-            {errorMessage && (
-              <div
-                className="mt-4 mb-6 p-4 rounded-[16px] border flex items-start gap-3 w-full max-w-sm animate-fade-in text-left"
-                style={{
-                  background: "rgba(239, 68, 68, 0.08)",
-                  borderColor: "rgba(239, 68, 68, 0.25)",
-                  color: "#ef4444",
-                  fontSize: 13,
-                  lineHeight: 1.4,
-                }}
-              >
-                <span style={{ fontSize: 16, marginTop: 1 }}>⚠️</span>
-                <div>
-                  <strong style={{ fontWeight: 600 }}>Security Blocked</strong>
-                  <div style={{ marginTop: 2, color: "rgba(255, 255, 255, 0.75)" }}>{errorMessage}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Bottom Drawer Simulator */}
-            <div
-              className="mt-6 w-full max-w-sm rounded-[20px] p-5 flex flex-col gap-4 animate-fade-up text-left"
-              style={{
-                background: "rgba(15, 61, 61, 0.35)",
-                border: "1px solid rgba(224, 123, 42, 0.18)",
-                backdropFilter: "blur(16px)",
-                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span style={{ fontSize: 18 }}>🎟️</span>
-                <h3
-                  className="font-playfair"
-                  style={{ color: "#E07B2A", fontSize: 15, fontWeight: 700, margin: 0 }}
-                >
-                  Venue QR Code Simulator
-                </h3>
-              </div>
-              
-              <p
-                className="font-dm"
-                style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.4, margin: 0 }}
-              >
-                Simulates scanning the uniquely generated HADI QR sticker placed at the venue. 
-                Uses a 5-minute bucketed salt hash for time-sensitive anti-tampering.
-              </p>
-
-              {/* Hash Box */}
-              <div className="flex flex-col gap-1">
-                <span className="font-dm" style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 600 }}>
-                  VALID SEED HASH (CURRENT BUCKET)
-                </span>
-                <div
-                  className="flex items-center justify-between rounded-lg p-2.5"
-                  style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "monospace",
-                      color: "#C9921F",
-                      fontSize: 11,
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {validQRString}
-                  </span>
-                  <button
-                    onClick={copyToClipboard}
-                    className="pressable"
-                    style={{
-                      background: "rgba(224, 123, 42, 0.15)",
-                      border: "1px solid rgba(224, 123, 42, 0.3)",
-                      borderRadius: 6,
-                      color: "#E07B2A",
-                      fontSize: 10.5,
-                      fontWeight: 600,
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                      marginLeft: 8,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex flex-col gap-2.5 mt-1">
-                <button
-                  onClick={() => handleManualVerify(validQRString)}
-                  className="pressable"
-                  style={{
-                    background: "linear-gradient(135deg, #E07B2A, #C9921F)",
-                    border: "none",
-                    borderRadius: 10,
-                    color: "#fff",
-                    fontWeight: 700,
-                    padding: "10px",
-                    fontSize: 12.5,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 12px rgba(224, 123, 42, 0.2)",
-                  }}
-                >
-                  Simulate Live Venue Scan
-                </button>
-                
-                <button
-                  onClick={() => handleManualVerify("HADI-QR-8-999999-invalidhash")}
-                  className="pressable"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 10,
-                    color: "rgba(255,255,255,0.75)",
-                    fontWeight: 600,
-                    padding: "9px",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  Simulate Invalid / Expired Scan
-                </button>
-              </div>
+                [DEBUG] Auto-Verify Success
+              </button>
             </div>
           </>
-        ) : (
-          /* Success state */
-          <div className="flex flex-col items-center gap-6 text-center">
-            {/* Success frame */}
-            <div
-              className="relative"
-              style={{ width: 220, height: 220 }}
-            >
-              {/* Green border */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: 16,
-                  border: "3px solid #22c55e",
-                  boxShadow: "0 0 32px rgba(34,197,94,0.3)",
-                  transition: "all 0.4s",
-                }}
-              />
-              {/* Checkmark */}
-              <div
-                className="animate-checkmark absolute inset-0 flex items-center justify-center"
-                style={{ fontSize: 80 }}
-              >
-                ✅
-              </div>
-            </div>
-
-            <div>
-              <h2
-                className="font-playfair mb-2"
-                style={{ color: "#fff", fontSize: 28, fontWeight: 700 }}
-              >
-                Gem Verified!
-              </h2>
-              <p
-                className="font-dm"
-                style={{ color: "rgba(255,255,255,0.6)", fontSize: 15 }}
-              >
-                {gemName}
-              </p>
-            </div>
-
-            {/* Points toast-style pill */}
-            {showToast && (
-              <div
-                className="toast-enter flex items-center gap-3 px-5 py-3 rounded-[16px]"
-                style={{
-                  background: "#fff",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-                }}
-              >
-                <span style={{ fontSize: 22 }}>💎</span>
-                <span
-                  className="font-dm"
-                  style={{ color: "#E07B2A", fontWeight: 700, fontSize: 16 }}
-                >
-                  +{awardedPoints} pts awarded
-                </span>
-                <span
-                  className="font-dm"
-                  style={{ color: "#7A6A55", fontSize: 13 }}
-                >
-                  · {gemName}
-                </span>
-              </div>
-            )}
-
-            <p
-              className="font-dm"
-              style={{ color: "rgba(255,255,255,0.35)", fontSize: 13 }}
-            >
-              Returning to gem detail…
-            </p>
-          </div>
         )}
       </div>
     </div>
   );
 }
 
-function CornerBracket({ position }: { position: "top-left" | "top-right" | "bottom-left" | "bottom-right" }) {
-  const size = 28;
-  const thickness = 3;
-  const color = "#E07B2A";
-
-  const styles: React.CSSProperties = {
-    position: "absolute",
-    width: size,
-    height: size,
-    animation: "cornerPulse 2s ease-in-out infinite",
-  };
-
-  const borderStyles: Partial<React.CSSProperties> = {
-    top: position.startsWith("top") ? 0 : undefined,
-    bottom: position.startsWith("bottom") ? 0 : undefined,
-    left: position.endsWith("left") ? 0 : undefined,
-    right: position.endsWith("right") ? 0 : undefined,
-    borderTop: position.startsWith("top") ? `${thickness}px solid ${color}` : undefined,
-    borderBottom: position.startsWith("bottom") ? `${thickness}px solid ${color}` : undefined,
-    borderLeft: position.endsWith("left") ? `${thickness}px solid ${color}` : undefined,
-    borderRight: position.endsWith("right") ? `${thickness}px solid ${color}` : undefined,
-    borderTopLeftRadius: position === "top-left" ? 8 : undefined,
-    borderTopRightRadius: position === "top-right" ? 8 : undefined,
-    borderBottomLeftRadius: position === "bottom-left" ? 8 : undefined,
-    borderBottomRightRadius: position === "bottom-right" ? 8 : undefined,
-  };
-
-  return <div style={{ ...styles, ...borderStyles }} />;
+export function QRScan() {
+  return (
+    <QRScannerErrorBoundary>
+      <QRScanInner />
+    </QRScannerErrorBoundary>
+  );
 }
