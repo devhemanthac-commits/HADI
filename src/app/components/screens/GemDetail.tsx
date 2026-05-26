@@ -693,21 +693,41 @@ export function GemDetail() {
                     </div>
                   </div>
 
-                  <button
-                    className="font-dm w-full flex items-center justify-center gap-2 pressable font-bold"
-                    style={{
-                      height: 48,
-                      borderRadius: 14,
-                      background: "linear-gradient(135deg, #E07B2A, #C9921F)",
-                      color: "#fff",
-                      border: "none",
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
-                    onClick={startVerification}
-                  >
-                    <span>🛰️</span> Start GPS Verification
-                  </button>
+                  <div className="w-full flex flex-col gap-2">
+                    <button
+                      className="font-dm w-full flex items-center justify-center gap-2 pressable font-bold"
+                      style={{
+                        height: 48,
+                        borderRadius: 14,
+                        background: "linear-gradient(135deg, #E07B2A, #C9921F)",
+                        color: "#fff",
+                        border: "none",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                      onClick={startVerification}
+                    >
+                      <span>🛰️</span> Start GPS Verification
+                    </button>
+                    <button
+                      className="font-dm w-full flex items-center justify-center gap-2 pressable font-semibold"
+                      style={{
+                        height: 48,
+                        borderRadius: 14,
+                        background: "rgba(255,255,255,0.04)",
+                        color: "rgba(255,255,255,0.8)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        setCheckinModalOpen(false);
+                        navigate("/qrscan", { state: { gemId: gem.id, gemName: gem.name, gemPoints: gem.points } });
+                      }}
+                    >
+                      <span>📷</span> Scan QR Code Instead
+                    </button>
+                  </div>
                 </div>
               )}
 
