@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useApp } from "../../context/AppContext";
 import { useGame } from "../../store/GameStore";
 import { generateGemQR } from "../../engine/checkin";
-import { Html5Qrcode } from "html5-qrcode";
+import jsQR from "jsqr";
 
 export function QRScan() {
   const navigate = useNavigate();
@@ -26,6 +26,11 @@ export function QRScan() {
 
   const validQRString = useMemo(() => generateGemQR(gemId, Date.now()), [gemId]);
 
+  // Refs for custom camera implementation
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const handleManualVerify = async (code: string) => {
     setErrorMessage("");
     
@@ -33,6 +38,10 @@ export function QRScan() {
     const result = doCheckin(gemId, "qr", undefined, 5, code);
     
     if (result.valid) {
+      // Stop the camera as soon as we succeed
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
       const points = result.pointsAwarded || gemPoints;
       navigate("/", { state: { checkinSuccess: true, points, gemName } });
     } else {
@@ -46,50 +55,82 @@ export function QRScan() {
     addToast("info", "📋 QR string copied!");
   };
 
+  // Setup the camera and QR detection loop
   useEffect(() => {
-    let html5QrCode: Html5Qrcode | null = null;
-    
+    let animationFrameId: number;
+    let isComponentMounted = true;
+
     const startScanner = async () => {
       try {
-        html5QrCode = new Html5Qrcode("qr-reader");
-        const config = { 
-          fps: 15, 
-          qrbox: (width: number, height: number) => {
-            const size = Math.min(width, height) * 0.85;
-            return { width: size, height: size };
-          },
-          aspectRatio: 1.0
-        };
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        });
+        
+        if (!isComponentMounted) {
+          // If the component unmounted before the camera initialized, stop it.
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
 
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => {
-            if (decodedText) {
-              handleManualVerify(decodedText);
-            }
-          },
-          () => {
-            // silent scan failure
-          }
-        );
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // Safari requires playsInline, or it defaults to a broken fullscreen
+          videoRef.current.setAttribute("playsinline", "true"); 
+          videoRef.current.play();
+          animationFrameId = requestAnimationFrame(tick);
+        }
       } catch (err: any) {
-        console.error("Failed to start QR scanner:", err);
-        setErrorMessage(
-          err?.message || 
-          "Failed to access device camera. Please make sure location and camera permissions are enabled in your browser settings."
-        );
+        console.error("Failed to start camera:", err);
+        if (err.name === "NotAllowedError") {
+          setErrorMessage("Camera access denied. Please enable camera permissions in your browser settings.");
+        } else if (err.name === "NotFoundError") {
+          setErrorMessage("No camera found on this device.");
+        } else {
+          setErrorMessage(err.message || "Failed to access device camera.");
+        }
       }
+    };
+
+    const tick = () => {
+      if (
+        videoRef.current && 
+        videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
+      ) {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const context = canvas.getContext("2d", { willReadFrequently: true });
+          if (context) {
+            canvas.height = videoRef.current.videoHeight;
+            canvas.width = videoRef.current.videoWidth;
+            context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert",
+            });
+
+            if (code && code.data) {
+              handleManualVerify(code.data);
+              return; // Stop the tick loop
+            }
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(tick);
     };
 
     const timer = setTimeout(() => {
       startScanner();
-    }, 400);
+    }, 300);
 
     return () => {
+      isComponentMounted = false;
       clearTimeout(timer);
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch((e) => console.error("Failed to stop scanner on unmount:", e));
+      cancelAnimationFrame(animationFrameId);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, [gemId]);
@@ -105,14 +146,6 @@ export function QRScan() {
           0% { top: 0%; opacity: 0.4; }
           50% { top: 100%; opacity: 1; }
           100% { top: 0%; opacity: 0.4; }
-        }
-        #qr-reader video {
-          width: 100% !important;
-          height: 100% !important;
-          object-fit: cover !important;
-        }
-        #qr-reader {
-          border: none !important;
         }
       `}</style>
 
@@ -151,16 +184,22 @@ export function QRScan() {
           <>
             {/* Scan Frame */}
             <div
-              className="relative mb-8 rounded-[16px] overflow-hidden"
+              className="relative mb-8 rounded-[16px] overflow-hidden bg-black flex items-center justify-center"
               style={{ 
                 width: 280, 
                 height: 280, 
                 border: "2px solid rgba(224,123,42,0.4)", 
-                background: "rgba(0,0,0,0.5)",
                 boxShadow: "0 0 25px rgba(224, 123, 42, 0.15)"
               }}
             >
-              <div id="qr-reader" style={{ width: "100%", height: "100%" }} />
+              <video 
+                ref={videoRef} 
+                className="w-full h-full object-cover" 
+                playsInline 
+                muted 
+                autoPlay 
+              />
+              <canvas ref={canvasRef} className="hidden" />
 
               {/* Laser Scanning Line Animation (Google Lens laser scanner effect) */}
               <div 
