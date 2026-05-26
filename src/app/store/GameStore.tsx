@@ -42,6 +42,7 @@ import { createNotification, createActivityEntry, pruneOldNotifications, pruneOl
 import { shouldRunWeeklyReset, runBloomDecayJob, runSafetyExpiryJob, runSubmissionExpiryJob, checkStreakBreak, sanitizeText, clampBloom } from "../engine/consistency";
 import { localStorage_, LSKey, appCache, CacheKey, TTL, invalidateAfterCheckin, invalidateAfterSafetyChange } from "../engine/cache";
 import { allGems } from "../data/gems";
+import { allPlaces } from "../data/places";
 import { calculateSuitabilityMultiplier } from "../engine/weather";
 import type { WeatherData } from "../engine/types";
 
@@ -78,16 +79,26 @@ function seedStats(): UserStats {
   };
 }
 
+// Real place coordinates lookup from places.ts data
+const PLACE_COORDS: Record<number, { lat: number; lng: number }> = {};
+for (const p of allPlaces) {
+  if (p.lat != null && p.lng != null) {
+    PLACE_COORDS[p.id] = { lat: p.lat, lng: p.lng };
+  }
+}
+
 function seedGemStates(): Map<number, GemState> {
   const map = new Map<number, GemState>();
   for (const g of allGems) {
+    // Use real coordinates from allPlaces, then fallback to city center
+    const realCoords = PLACE_COORDS[g.id] ?? { lat: 12.3052, lng: 76.6551 };
     map.set(g.id, {
       id: g.id,
       rarityTier: g.rarityTier,
       bloomCapacity: g.bloomCapacity,
       lastVisitTimestamp: null,
       digipinCode: g.digipinCode,
-      coords: { lat: 12.295 + (g.id * 0.005) % 0.1, lng: 76.644 + (g.id * 0.003) % 0.08 },
+      coords: realCoords,
       category: g.category,
       basePoints: g.points,
     });

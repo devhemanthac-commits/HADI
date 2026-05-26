@@ -7,7 +7,7 @@ import { calculateSuitabilityMultiplier } from "./weather";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_CHECKIN_RADIUS_M = 100;
+const MAX_CHECKIN_RADIUS_M = 250;
 const PRECISION_BONUS_RADIUS_M = 20;
 const LOW_ACCURACY_RADIUS_M = 50;
 const DUPLICATE_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -34,9 +34,10 @@ function toRad(deg: number): number {
 // ─── Proximity multiplier ──────────────────────────────────────────────────────
 
 export function getProximityMultiplier(distanceM: number): number {
-  if (distanceM <= PRECISION_BONUS_RADIUS_M) return 1.5;
-  if (distanceM <= LOW_ACCURACY_RADIUS_M)    return 1.0;
-  if (distanceM <= MAX_CHECKIN_RADIUS_M)     return 0.85;
+  if (distanceM <= PRECISION_BONUS_RADIUS_M) return 1.5;  // ≤20m
+  if (distanceM <= LOW_ACCURACY_RADIUS_M)    return 1.0;  // ≤50m
+  if (distanceM <= 100)                      return 0.85; // ≤100m
+  if (distanceM <= MAX_CHECKIN_RADIUS_M)     return 0.7;  // ≤250m
   return 0; // out of range
 }
 
@@ -218,7 +219,7 @@ export function verifyCheckin(input: VerifyCheckinInput): CheckinResult {
 
   const proximityMultiplier = input.method === "qr" ? 1.0 : getProximityMultiplier(distance);
   if (proximityMultiplier === 0) {
-    return { valid: false, reason: `Too far from gem (${Math.round(distance)}m). Move within 100m.`, distance };
+    return { valid: false, reason: `Too far from gem (${Math.round(distance)}m). Move within 250m.`, distance };
   }
 
   // ── Bloom check ───────────────────────────────────────────────────────────

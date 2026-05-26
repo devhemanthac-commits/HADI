@@ -62,10 +62,10 @@ export function GemDetail() {
     });
   }, []);
 
-  // Checkin wizard states
   const [checkinModalOpen, setCheckinModalOpen] = useState(false);
   const [checkinStage, setCheckinStage] = useState<"idle" | "gps_fetching" | "distance_checking" | "minting" | "success" | "dormant_error" | "drift_error">("idle");
-  const [simDistance, setSimDistance] = useState<50 | 250>(50);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [realDistance, setRealDistance] = useState<number | null>(null);
   const [mintedPoints, setMintedPoints] = useState(0);
 
   // Simulate playback progress
@@ -91,45 +91,80 @@ export function GemDetail() {
   const handleTapCheckin = () => {
     setCheckinModalOpen(true);
     setCheckinStage("idle");
+    setGpsError(null);
+    setRealDistance(null);
   };
 
   const startVerification = () => {
     if (!gem) return;
     setCheckinStage("gps_fetching");
+    setGpsError(null);
 
-    // 1. GPS Acquisition Simulator (1.5s)
-    setTimeout(() => {
-      setCheckinStage("distance_checking");
+    // 1. Get REAL user GPS coordinates via browser API
+    if (!navigator.geolocation) {
+      setGpsError("Geolocation is not supported by your browser.");
+      setCheckinStage("drift_error");
+      return;
+    }
 
-      // 2. Proximity/Haversine Check (1s)
-      setTimeout(() => {
-        if (simDistance === 250) {
-          // Failure: GPS Drift / Cellular Dead Zone
-          setCheckinStage("drift_error");
-        } else {
-          // Success: Proximity cleared, now checking Bloom status
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userCoords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        const accuracy = position.coords.accuracy; // metres
+
+        setCheckinStage("distance_checking");
+
+        // 2. Perform check-in with REAL coordinates after a brief animation
+        setTimeout(() => {
+          // Check bloom first for better UX
           if (liveBloomStatus === "Dormant") {
             setCheckinStage("dormant_error");
-          } else {
-            setCheckinStage("minting");
+            return;
+          }
 
-            // 3. Perform the actual checkin via store
-            setTimeout(() => {
-              // Standard coordinates match
-              const coords = liveGemState?.coords ?? { lat: 12.295, lng: 76.644 };
-              const res = doCheckin(gem.id, "gps", coords, 5);
-              if (res.valid) {
-                setMintedPoints(res.pointsAwarded ?? gem.points);
-                setCheckinStage("success");
+          // 3. Call the real check-in engine with real user coordinates
+          setCheckinStage("minting");
+          setTimeout(() => {
+            const res = doCheckin(gem.id, "gps", userCoords, accuracy);
+            if (res.valid) {
+              setMintedPoints(res.pointsAwarded ?? gem.points);
+              setRealDistance(null);
+              setCheckinStage("success");
+            } else {
+              // If rejected due to distance, show the distance in drift_error
+              const distMatch = res.reason?.match(/\((\d+)m\)/);
+              if (distMatch) {
+                setRealDistance(parseInt(distMatch[1], 10));
+              }
+              if (res.reason?.includes("Too far")) {
+                setCheckinStage("drift_error");
               } else {
                 addToast("warning", res.reason ?? "Verification failed.");
                 setCheckinStage("idle");
               }
-            }, 1200);
-          }
-        }
-      }, 1000);
-    }, 1500);
+            }
+          }, 1200);
+        }, 1000);
+      },
+      (err) => {
+        // GPS error — permission denied, unavailable, or timeout
+        const messages: Record<number, string> = {
+          1: "Location permission denied. Please enable location access in your browser settings.",
+          2: "Location unavailable. Please check your GPS signal.",
+          3: "Location request timed out. Please try again.",
+        };
+        setGpsError(messages[err.code] || "Could not get your location.");
+        setCheckinStage("drift_error");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
   };
 
   if (!gem) {
@@ -640,42 +675,21 @@ export function GemDetail() {
                       Verify Your Presence
                     </h4>
                     <p className="font-dm text-[12px]" style={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
-                      Choose your simulated GPS distance to test HADI's multi-stage check-in validation pipeline.
+                      HADI will use your device GPS to verify you're near this gem. You must be within <strong style={{ color: "#E07B2A" }}>250 meters</strong> of the location.
                     </p>
                   </div>
 
-                  {/* Simulator Controls */}
+                  {/* Location info */}
                   <div className="w-full flex flex-col gap-2.5 p-4 rounded-[20px]" style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
                     <p className="font-dm text-[11px] font-bold uppercase tracking-wider" style={{ color: "#E07B2A" }}>
-                      📍 Developer GPS Simulator
+                      📍 Gem Location
                     </p>
-                    <div className="flex gap-2 w-full">
-                      <button
-                        className="font-dm flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 border transition pressable"
-                        style={{
-                          background: simDistance === 50 ? "rgba(224,123,42,0.12)" : "rgba(255,255,255,0.02)",
-                          borderColor: simDistance === 50 ? "#E07B2A" : "rgba(255,255,255,0.05)",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setSimDistance(50)}
-                      >
-                        <span style={{ fontSize: 16 }}>🏡</span>
-                        <span className="font-bold text-white text-[12px]">Near (&lt; 100m)</span>
-                        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 10 }}>Simulates 50m</span>
-                      </button>
-                      <button
-                        className="font-dm flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 border transition pressable"
-                        style={{
-                          background: simDistance === 250 ? "rgba(224,123,42,0.12)" : "rgba(255,255,255,0.02)",
-                          borderColor: simDistance === 250 ? "#E07B2A" : "rgba(255,255,255,0.05)",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setSimDistance(250)}
-                      >
-                        <span style={{ fontSize: 16 }}>🚗</span>
-                        <span className="font-bold text-white text-[12px]">Far (&gt; 100m)</span>
-                        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 10 }}>Simulates 250m</span>
-                      </button>
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontSize: 22 }}>{gem.emoji}</span>
+                      <div>
+                        <p className="font-dm text-[13px] font-bold text-white">{gem.name}</p>
+                        <p className="font-dm text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>{gem.location}, Mysuru</p>
+                      </div>
                     </div>
                   </div>
 
@@ -692,7 +706,7 @@ export function GemDetail() {
                     }}
                     onClick={startVerification}
                   >
-                    <span>🧭</span> Start Validation Pipeline
+                    <span>🛰️</span> Start GPS Verification
                   </button>
                 </div>
               )}
@@ -798,7 +812,7 @@ export function GemDetail() {
                     <div className="flex justify-between font-dm text-[12px]">
                       <span style={{ color: "rgba(255,255,255,0.5)" }}>Proximity Bonus:</span>
                       <span style={{ color: "#22c55e", fontWeight: 600 }}>
-                        {simDistance === 50 ? "1.5x (<20m)" : "QR Verified"}
+                        GPS Verified ✓
                       </span>
                     </div>
                   </div>
@@ -881,24 +895,27 @@ export function GemDetail() {
                       fontSize: 40,
                     }}
                   >
-                    📡
+                    {gpsError ? "📡" : "📐"}
                   </div>
 
                   <div className="flex flex-col gap-2">
                     <h4 className="font-playfair text-[18px] font-bold text-white">
-                      GPS Drift / Dead Zone
+                      {gpsError ? "GPS Error" : "Too Far From Gem"}
                     </h4>
                     <p className="font-dm text-[13px]" style={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
-                      Calculated distance: <strong style={{ color: "#d97706" }}>250 meters</strong>. Curvature exceeds 100m threshold, possibly due to tall heritage arches or weak cellular signals.
+                      {gpsError 
+                        ? gpsError 
+                        : <>You are <strong style={{ color: "#d97706" }}>{realDistance ? `${realDistance} meters` : "more than 250m"}</strong> away from this gem. Move closer or use the QR code option below.</>
+                      }
                     </p>
                   </div>
 
                   <div className="w-full p-4 rounded-2xl flex flex-col gap-1.5" style={{ background: "rgba(217,119,6,0.05)", border: "1px solid rgba(217,119,6,0.15)", textTransform: "none", textAlign: "left" }}>
                     <p className="font-dm text-[12px] font-bold text-white">
-                      🛡️ Failsafe Bypass Option:
+                      🛡️ Alternative Verification:
                     </p>
                     <p className="font-dm text-[11px]" style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
-                      You can physically scan the uniquely generated HADI QR sticker placed at the venue. This decrypts a time-sensitive salted hash to grant check-in.
+                      Scan the HADI QR sticker placed at the venue to verify your check-in without GPS.
                     </p>
                   </div>
 
@@ -919,7 +936,7 @@ export function GemDetail() {
                         navigate("/qrscan", { state: { gemId: gem.id, gemName: gem.name, gemPoints: gem.points } });
                       }}
                     >
-                      📷 Scan Physical QR Sticker
+                      📷 Scan QR Code Instead
                     </button>
                     <button
                       className="font-dm w-full flex items-center justify-center gap-2 pressable"
@@ -934,7 +951,7 @@ export function GemDetail() {
                       }}
                       onClick={() => setCheckinStage("idle")}
                     >
-                      Try GPS Again
+                      🛰️ Try GPS Again
                     </button>
                   </div>
                 </div>
