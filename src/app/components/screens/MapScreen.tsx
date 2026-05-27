@@ -391,7 +391,7 @@ export function MapScreen() {
         <div className="absolute top-[116px] left-0 right-0 z-[1000] px-4 pb-3" style={{ pointerEvents: "auto" }}>
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             <button onClick={() => setActiveCategory("All")} className="font-dm shrink-0 pressable"
-              style={{ padding: "7px 14px", borderRadius: 99, background: activeCategory === "All" ? "#fff" : "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", border: activeCategory === "All" ? "none" : "1px solid rgba(255,255,255,0.2)", color: activeCategory === "All" ? "#0F3D3D" : "#fff", fontWeight: activeCategory === "All" ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: activeCategory === "All" ? "0 4px 16px rgba(0,0,0,0.18)" : "none", whiteSpace: "nowrap" }}>
+              style={{ padding: "7px 14px", borderRadius: 99, background: activeCategory === "All" ? "#fff" : "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", border: activeCategory === "All" ? "none" : "1px solid rgba(255,255,255,0.2)", color: activeCategory === "All" ? "#0F3D3D" : "#000", fontWeight: activeCategory === "All" ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: activeCategory === "All" ? "0 4px 16px rgba(0,0,0,0.18)" : "none", whiteSpace: "nowrap" }}>
               🗺️ All
             </button>
             {ALL_CATEGORIES.map((cat) => {
@@ -399,7 +399,7 @@ export function MapScreen() {
               const active = activeCategory === cat;
               return (
                 <button key={cat} onClick={() => setActiveCategory(active ? "All" : cat)} className="font-dm shrink-0 pressable"
-                  style={{ padding: "7px 14px", borderRadius: 99, background: active ? cc.color : "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", border: active ? "none" : "1px solid rgba(255,255,255,0.2)", color: "#fff", fontWeight: active ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: active ? `0 4px 16px ${cc.color}55` : "none", whiteSpace: "nowrap" }}>
+                  style={{ padding: "7px 14px", borderRadius: 99, background: active ? cc.color : "rgba(255,255,255,0.15)", backdropFilter: "blur(12px)", border: active ? "none" : "1px solid rgba(255,255,255,0.2)", color: active ? "#fff" : "#000", fontWeight: active ? 700 : 500, fontSize: 13, cursor: "pointer", boxShadow: active ? `0 4px 16px ${cc.color}55` : "none", whiteSpace: "nowrap" }}>
                   {cc.icon} {cc.label}
                 </button>
               );

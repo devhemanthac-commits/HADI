@@ -134,7 +134,7 @@ function SearchResults({ query, C, navigate, toggleSaved, isSaved }: { query: st
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {["All", "Art", "Food", "Temples", "Crafts", "Stay", "Heritage", "Nature"].map((f) => (
           <button key={f} onClick={() => setActiveFilter(f)} className="font-dm whitespace-nowrap shrink-0 pressable"
-            style={{ padding: "6px 14px", borderRadius: 99, background: f === activeFilter ? "#E07B2A" : "transparent", border: `1px solid ${C.borderStrong}`, color: f === activeFilter ? "#fff" : C.muted, fontWeight: f === activeFilter ? 600 : 400, fontSize: 12, cursor: "pointer" }}>
+            style={{ padding: "6px 14px", borderRadius: 99, background: f === activeFilter ? "#E07B2A" : "transparent", border: `1px solid ${C.borderStrong}`, color: f === activeFilter ? "#fff" : "#000", fontWeight: f === activeFilter ? 600 : 400, fontSize: 12, cursor: "pointer" }}>
             {f}
           </button>
         ))}
@@ -593,7 +593,7 @@ export function Home() {
                   style={{
                     background: active ? "#E07B2A" : "rgba(255,255,255,0.06)",
                     border: active ? "1px solid #E07B2A" : `1px solid ${C.borderStrong}`,
-                    color: active ? "#fff" : C.text,
+                    color: active ? "#fff" : "#000",
                     boxShadow: active ? "0 4px 12px rgba(224,123,42,0.3)" : "none",
                     cursor: "pointer",
                   }}
