@@ -35,6 +35,7 @@ const QRScan        = lazy(() => lazyRetry(() => import("./components/screens/QR
 const EventsScreen  = lazy(() => lazyRetry(() => import("./components/screens/EventsScreen").then((m) => ({ default: m.EventsScreen }))));
 const BuddyScreen   = lazy(() => lazyRetry(() => import("./components/screens/BuddyScreen").then((m) => ({ default: m.BuddyScreen }))));
 const PlacesScreen  = lazy(() => lazyRetry(() => import("./components/screens/PlacesScreen").then((m) => ({ default: m.PlacesScreen }))));
+const RewardsScreen = lazy(() => lazyRetry(() => import("./components/screens/RewardsScreen").then((m) => ({ default: m.RewardsScreen }))));
 
 // ── Minimal inline fallback ──────────────────────────────────────────────────
 function ScreenFallback() {
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
       { path: "gem/:id",     element: withSuspense(GemDetail) },
       { path: "submit",      element: withSuspense(GemSubmission) },
       { path: "places",      element: withSuspense(PlacesScreen) },
+      { path: "rewards",     element: withSuspense(RewardsScreen) },
       { path: "*",           Component: NotFound },
     ],
   },

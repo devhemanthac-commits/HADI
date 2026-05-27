@@ -97,15 +97,23 @@ export function recordGemInSession(session: BuddySession, gemId: number): BuddyS
   return { ...session, gemsCheckedIn: [...session.gemsCheckedIn, gemId] };
 }
 
-// ─── Point calculations ────────────────────────────────────────────────────────
+// ─── Point calculations & Geo-fencing ──────────────────────────────────────────
+
+const MAX_BUDDY_DISTANCE_M = 150; // max allowed distance before session rewards pause
+
+export function checkBuddyProximity(explorerCoords: Coords, buddyCoords: Coords): boolean {
+  return haversineDistance(explorerCoords, buddyCoords) <= MAX_BUDDY_DISTANCE_M;
+}
 
 /** Explorer's check-in points during a buddy session */
-export function applyBuddyExplorerBonus(basePoints: number): number {
+export function applyBuddyExplorerBonus(basePoints: number, isWithinRange: boolean = true): number {
+  if (!isWithinRange) return basePoints; // No bonus if geo-fence is broken
   return Math.floor(basePoints * (1 + EXPLORER_BONUS_PCT));
 }
 
 /** Points the buddy earns from one explorer check-in */
-export function calcBuddyEarnings(explorerPointsThisSession: number, newPointsFromCheckin: number): number {
+export function calcBuddyEarnings(explorerPointsThisSession: number, newPointsFromCheckin: number, isWithinRange: boolean = true): number {
+  if (!isWithinRange) return 0; // Buddy earns nothing if they drifted too far
   const earned = Math.floor(newPointsFromCheckin * BUDDY_EARNINGS_PCT);
   const remaining = BUDDY_EARNINGS_CAP - explorerPointsThisSession;
   return Math.max(0, Math.min(earned, remaining));

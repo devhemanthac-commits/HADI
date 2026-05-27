@@ -11,7 +11,16 @@ const POINTS_CREATOR_BONUS    = 150; // if ≥5 attendees show up
 
 // ─── RSVP ─────────────────────────────────────────────────────────────────────
 
-export function canRsvp(event: EventState, userId: string): RsvpResult {
+export function checkTimeConflict(newEvent: EventState, userEvents: EventState[]): boolean {
+  return userEvents.some(
+    (e) => e.id !== newEvent.id && newEvent.startTime < e.endTime && newEvent.endTime > e.startTime
+  );
+}
+
+export function canRsvp(event: EventState, userId: string, userActiveEvents: EventState[] = []): RsvpResult {
+  if (checkTimeConflict(event, userActiveEvents)) {
+    return { success: false, position: "full", message: "Time conflict with another event you are attending." };
+  }
   if (event.rsvps.includes(userId)) {
     return { success: false, position: "confirmed", message: "You already have an RSVP." };
   }
@@ -29,7 +38,7 @@ export function canRsvp(event: EventState, userId: string): RsvpResult {
   return { success: false, position: "full", message: "This event is full and the waitlist is closed." };
 }
 
-export function toggleRsvp(event: EventState, userId: string): { event: EventState; result: RsvpResult; pointsDelta: number } {
+export function toggleRsvp(event: EventState, userId: string, userActiveEvents: EventState[] = []): { event: EventState; result: RsvpResult; pointsDelta: number } {
   // Cancel existing
   if (event.rsvps.includes(userId)) {
     const rsvps = event.rsvps.filter((id) => id !== userId);
@@ -47,7 +56,7 @@ export function toggleRsvp(event: EventState, userId: string): { event: EventSta
     return { event: { ...event, waitlist }, result: { success: true, position: "waitlist", message: "Removed from waitlist." }, pointsDelta: 0 };
   }
 
-  const check = canRsvp(event, userId);
+  const check = canRsvp(event, userId, userActiveEvents);
   if (!check.success) return { event, result: check, pointsDelta: 0 };
 
   if (check.position === "confirmed") {

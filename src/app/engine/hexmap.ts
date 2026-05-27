@@ -1,4 +1,24 @@
-import type { ZoneDef, ZoneProgress, ZoneUnlockReq, UserStats, HexStatus } from "./types";
+import type { ZoneDef, ZoneProgress, ZoneUnlockReq, UserStats, HexStatus, Coords } from "./types";
+
+// ─── Mathematical Ray-Casting Algorithm ───────────────────────────────────────
+
+/**
+ * Advanced Point-in-Polygon validation using the Ray-Casting algorithm.
+ * Casts a horizontal ray from the coordinate and counts boundary intersections.
+ * Even count = outside, Odd count = inside.
+ */
+export function isPointInPolygon(point: Coords, polygon: Coords[]): boolean {
+  let isInside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lat, yi = polygon[i].lng;
+    const xj = polygon[j].lat, yj = polygon[j].lng;
+
+    const intersect = ((yi > point.lng) !== (yj > point.lng)) &&
+        (point.lat < (xj - xi) * (point.lng - yi) / (yj - yi) + xi);
+    if (intersect) isInside = !isInside;
+  }
+  return isInside;
+}
 
 // ─── Zone definitions ──────────────────────────────────────────────────────────
 
@@ -7,6 +27,13 @@ export const ZONE_DEFS: ZoneDef[] = [
     id: "heritage_core",
     name: "Heritage Core",
     digipinCode: "MYS-4N2K",
+    polygon: [
+      { lat: 12.3100, lng: 76.6400 },
+      { lat: 12.3150, lng: 76.6500 },
+      { lat: 12.3050, lng: 76.6600 },
+      { lat: 12.2950, lng: 76.6500 },
+      { lat: 12.3000, lng: 76.6400 }
+    ],
     totalGems: 12,
     multiplier: 3.0,
     unlockRequirement: { type: "none" },
@@ -39,6 +66,12 @@ export const ZONE_DEFS: ZoneDef[] = [
     id: "silk_district",
     name: "Silk District",
     digipinCode: "MYS-3K6W",
+    polygon: [
+      { lat: 12.2800, lng: 76.6400 },
+      { lat: 12.2900, lng: 76.6500 },
+      { lat: 12.2850, lng: 76.6600 },
+      { lat: 12.2750, lng: 76.6500 }
+    ],
     totalGems: 6,
     multiplier: 2.5,
     unlockRequirement: { type: "level", level: 2 },
@@ -57,6 +90,11 @@ export function getZoneMultiplier(digipinCode: string): number {
 
 export function getZoneByDigipin(code: string): ZoneDef | undefined {
   return ZONE_DEFS.find((z) => z.digipinCode === code);
+}
+
+/** Determines which mathematically bounded zone a coordinate belongs to */
+export function getZoneForCoordinate(coords: Coords): ZoneDef | undefined {
+  return ZONE_DEFS.find(z => z.polygon && isPointInPolygon(coords, z.polygon));
 }
 
 // ─── Zone unlock check ────────────────────────────────────────────────────────

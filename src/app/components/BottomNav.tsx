@@ -5,6 +5,7 @@ const navItems = [
   { emoji: "🏠", label: "Home", to: "/" },
   { emoji: "🗺️", label: "Map", to: "/map" },
   { emoji: "🌿", label: "Feed", to: "/community" },
+  { emoji: "🎁", label: "Rewards", to: "/rewards" },
   { emoji: "👤", label: "Profile", to: "/profile" },
 ];
 

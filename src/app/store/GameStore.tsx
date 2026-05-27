@@ -32,7 +32,7 @@ import { recalcBloomNow, incrementBloomCapacity, applyBloomBoost, getBloomStatus
 import { verifyCheckin, haversineDistance, getProximityMultiplier } from "../engine/checkin";
 import { getZoneMultiplier, ZONE_DEFS, isZoneUnlocked, getZoneCompletion } from "../engine/hexmap";
 import { castVote, calculateKarma, checkLocalExpertEligibility } from "../engine/community";
-import { createReport, confirmReport, dismissReport, extendReport, processExpiredReports, canSubmitReport } from "../engine/safety";
+import { createReport, confirmReport, dismissReport, extendReport, processExpiredReports, canSubmitReport, findDuplicateReport } from "../engine/safety";
 import { rankBuddies, startBuddySession, endBuddySession, isBuddySessionActive, recordGemInSession, calcBuddyEarnings } from "../engine/buddy";
 import { toggleRsvp, getCountdown, validateEventCreation } from "../engine/events";
 import { validateSubmission, createSubmission, confirmSubmission, flagSubmission } from "../engine/submission";
@@ -44,6 +44,7 @@ import { localStorage_, LSKey, appCache, CacheKey, TTL, invalidateAfterCheckin, 
 import { allGems } from "../data/gems";
 import { allPlaces } from "../data/places";
 import { calculateSuitabilityMultiplier } from "../engine/weather";
+import { syncEngine } from "../engine/sync";
 import type { WeatherData } from "../engine/types";
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
@@ -159,6 +160,9 @@ interface GameContextType {
   submitGem: (data: SubmitGemInput) => { ok: boolean; errors?: string[] };
   confirmGemSubmission: (submissionId: string) => void;
   flagGemSubmission: (submissionId: string) => void;
+
+  // ── Rewards ───────────────────────────────────────────────────────────────
+  redeemPoints: (amount: number, rewardName: string) => { ok: boolean; message: string };
 
   // ── Leaderboard ───────────────────────────────────────────────────────────
   leaderboard: ReturnType<typeof buildLeaderboard>;
@@ -599,6 +603,9 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     if (result.newBloomStatus && result.newBloomStatus !== "Active") {
       pushNotif(notifyBloomChanged(gemData?.name ?? "Gem", result.newBloomStatus));
     }
+    
+    // Background sync
+    syncEngine.enqueue("checkin", { gemId, method, pointsDelta: totalPts });
 
     const pub: CheckinResult_Public = {
       valid: true,
@@ -612,7 +619,7 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     };
     setLastCheckinResult(pub);
     return pub;
-  }, [gemStates, stats, checkinRecords, isBuddyActive, unlockedBadges, buddySession, pushNotif, pushActivity]);
+  }, [gemStates, stats, checkinRecords, isBuddyActive, unlockedBadges, buddySession, pushNotif, pushActivity, userId]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // GEM BLOOM
@@ -705,6 +712,13 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     const { allowed, reason } = canSubmitReport(stats.userId, stats.hasLocalMode, safetyReports);
     if (!allowed) return { ok: false, error: reason };
 
+    const duplicate = findDuplicateReport(type, coords, safetyReports);
+    if (duplicate) {
+      // Auto-confirm the existing report instead of creating a new one
+      confirmSafetyReport(duplicate.id);
+      return { ok: true };
+    }
+
     const report = createReport(stats.userId, type, coords, sanitizeText(description), gemId);
     setSafetyReports((r) => [report, ...r]);
     fsAddSafetyReport(report); // Firestore
@@ -770,7 +784,10 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
   const rsvpEvent = useCallback((eventId: number): { ok: boolean; message: string } => {
     const ev = eventStates.get(eventId);
     if (!ev) return { ok: false, message: "Event not found." };
-    const { event: updated, result, pointsDelta } = toggleRsvp(ev, stats.userId);
+    
+    const userActiveEvents = Array.from(eventStates.values()).filter(e => e.rsvps.includes(stats.userId));
+    
+    const { event: updated, result, pointsDelta } = toggleRsvp(ev, stats.userId, userActiveEvents);
     setEventStates((m) => { const n = new Map(m); n.set(eventId, updated); return n; });
     fsUpdateEvent(eventId, { rsvps: updated.rsvps, waitlist: updated.waitlist }); // Firestore
     if (pointsDelta > 0) {
@@ -835,6 +852,28 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
       return updated;
     }));
   }, [stats.userId]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REWARDS
+  // ─────────────────────────────────────────────────────────────────────────
+  const redeemPoints = useCallback((amount: number, rewardName: string): { ok: boolean; message: string } => {
+    const spendable = stats.totalXP - (stats.pointsRedeemed || 0);
+    if (spendable < amount) {
+      return { ok: false, message: `Insufficient points. You need ${amount} but have ${spendable}.` };
+    }
+    
+    setStats(prev => ({
+      ...prev,
+      pointsRedeemed: (prev.pointsRedeemed || 0) + amount
+    }));
+    
+    pushActivity(createActivityEntry("checkin", `Redeemed ${rewardName}`, "🎁", `-${amount} pts`));
+    
+    // Background sync
+    syncEngine.enqueue("redeem", { rewardName, amount });
+
+    return { ok: true, message: "Redeemed successfully" };
+  }, [stats.totalXP, stats.pointsRedeemed, pushActivity]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // LEADERBOARD  (live from Firestore, falls back to demo data while loading)
@@ -944,6 +983,7 @@ export function GameProvider({ children, userId }: { children: ReactNode; userId
     buddySession, isBuddyActive, startBuddy, endBuddy,
     eventStates, rsvpEvent, getCountdownFn,
     submissions, submitGem, confirmGemSubmission, flagGemSubmission,
+    redeemPoints,
     leaderboard,
     localModeEligibility, activateLocalMode,
     notifications, activityLog, unreadCount, markNotifRead, markAllNotifsRead,

@@ -36,6 +36,7 @@ export function Sidebar() {
     {
       label: "You",
       items: [
+        { emoji: "🎁", label: "Rewards", to: "/rewards" },
         { emoji: "👤", label: "Profile", to: "/profile" },
       ],
     },

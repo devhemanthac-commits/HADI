@@ -51,21 +51,32 @@ interface SpoofCheck {
 export function checkVelocitySpoof(
   currentCoords: Coords,
   currentTimestamp: number,
-  lastRecord: CheckinRecord | null
+  recentRecords: CheckinRecord[]
 ): SpoofCheck {
-  if (!lastRecord) return { valid: true };
-  const timeDeltaMs = currentTimestamp - lastRecord.timestamp;
-  if (timeDeltaMs <= 0) return { valid: false, reason: "Invalid time delta." };
+  if (recentRecords.length === 0) return { valid: true };
 
-  // If last checkin was more than 2 hours ago, any normal travel within the region is possible.
-  if (timeDeltaMs > DUPLICATE_WINDOW_MS) return { valid: true };
+  // Analyze the last 3 check-ins to detect impossible sliding-window average velocities
+  const windowSize = Math.min(3, recentRecords.length);
+  const recentWindow = recentRecords
+    .filter(r => currentTimestamp - r.timestamp <= DUPLICATE_WINDOW_MS)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, windowSize);
 
-  const dist = haversineDistance(currentCoords, lastRecord.coords);
-  const velocityMps = dist / (timeDeltaMs / 1000); // meters per second
+  if (recentWindow.length === 0) return { valid: true };
 
-  if (velocityMps > MAX_VELOCITY_M_PER_S) {
-    return { valid: false, reason: "Location changed too fast — possible GPS spoof detected." };
+  for (const record of recentWindow) {
+    const timeDeltaMs = currentTimestamp - record.timestamp;
+    if (timeDeltaMs <= 0) return { valid: false, reason: "Invalid time delta detected." };
+    
+    const dist = haversineDistance(currentCoords, record.coords);
+    const velocityMps = dist / (timeDeltaMs / 1000); // meters per second
+
+    // If velocity exceeds max threshold for ANY recent record within the window, it's a spoof
+    if (velocityMps > MAX_VELOCITY_M_PER_S) {
+      return { valid: false, reason: "Location changed too fast relative to recent check-ins — possible GPS spoof detected." };
+    }
   }
+
   return { valid: true };
 }
 
@@ -106,9 +117,27 @@ export function checkHourlyRateLimit(
   return { valid: true };
 }
 
-// ─── Salted QR Hashing for dead-zone Failsafe ──────────────────────────────────
+// ─── Salted QR Hashing for dead-zone Failsafe (Advanced cyrb53) ──────────────────
 
-const HADI_QR_SALT = "sandalwood_artisan_quarter_2026";
+const HADI_QR_SALT = "sandalwood_artisan_quarter_2026_v2";
+
+/**
+ * Advanced synchronous 53-bit hash (cyrb53)
+ * Provides high collision resistance and avalanche effect compared to simple loops.
+ */
+function cyrb53(str: string, seed = 0): string {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
 
 /**
  * Generates a time-sensitive salted hash QR string for a specific Gem.
@@ -117,13 +146,7 @@ const HADI_QR_SALT = "sandalwood_artisan_quarter_2026";
 export function generateGemQR(gemId: number, nowMs: number): string {
   const timeBucket = Math.floor(nowMs / (5 * 60 * 1000)); // 5-minute blocks
   const hashInput = `${gemId}-${timeBucket}-${HADI_QR_SALT}`;
-  let hash = 0;
-  for (let i = 0; i < hashInput.length; i++) {
-    const char = hashInput.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  const hexHash = Math.abs(hash).toString(16);
+  const hexHash = cyrb53(hashInput);
   return `HADI-QR-${gemId}-${timeBucket}-${hexHash}`;
 }
 
@@ -152,13 +175,7 @@ export function verifyGemQR(qrString: string, gemId: number, nowMs: number): boo
 
   // Re-verify the salted hash using the parsed timeBucket
   const hashInput = `${gemId}-${parsedTimeBucket}-${HADI_QR_SALT}`;
-  let hash = 0;
-  for (let i = 0; i < hashInput.length; i++) {
-    const char = hashInput.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  const hexHash = Math.abs(hash).toString(16);
+  const hexHash = cyrb53(hashInput);
 
   return hexHash === providedHash;
 }
@@ -190,7 +207,7 @@ export function verifyCheckin(input: VerifyCheckinInput): CheckinResult {
     const acc = checkGPSAccuracy(input.gpsAccuracy);
     if (!acc.valid) return { valid: false, reason: acc.reason };
 
-    const vel = checkVelocitySpoof(input.userCoords, now, input.lastRecord);
+    const vel = checkVelocitySpoof(input.userCoords, now, input.recentRecords);
     if (!vel.valid) return { valid: false, reason: vel.reason };
   }
 

@@ -66,12 +66,44 @@ export function castVote(
   return { updatedPost, result };
 }
 
+// ─── Advanced Ranking Algorithm ───────────────────────────────────────────────
+
+/**
+ * Calculates the lower bound of the Wilson score confidence interval for a Bernoulli parameter.
+ * Used to rank community posts by "best" rather than simple upvotes - downvotes.
+ */
+export function calculateWilsonScore(upvotes: number, downvotes: number): number {
+  const n = upvotes + downvotes;
+  if (n === 0) return 0;
+  const z = 1.96; // 95% confidence interval
+  const phat = upvotes / n;
+  const z2 = z * z;
+  return (phat + z2 / (2 * n) - z * Math.sqrt((phat * (1 - phat) + z2 / (4 * n)) / n)) / (1 + z2 / n);
+}
+
+export function sortPostsByBest(posts: CommunityPost[]): CommunityPost[] {
+  return [...posts].sort((a, b) => calculateWilsonScore(b.upvotes, b.downvotes) - calculateWilsonScore(a.upvotes, a.downvotes));
+}
+
 // ─── Karma calculation ────────────────────────────────────────────────────────
 
 export function calculateKarma(posts: CommunityPost[], authorId: string): number {
   return posts
     .filter((p) => p.authorId === authorId)
     .reduce((sum, p) => sum + p.score, 0);
+}
+
+/**
+ * Decays karma if the user has been inactive.
+ * Allows a 30-day grace period, then decays karma slightly every day to encourage continuous engagement.
+ */
+export function calculateDecayedKarma(baseKarma: number, lastActivityMs: number, nowMs?: number): number {
+  const now = nowMs ?? Date.now();
+  const inactiveDays = Math.max(0, (now - lastActivityMs) / (24 * 3_600_000));
+  if (inactiveDays <= 30) return baseKarma; // 30 day grace period
+  
+  const decayFactor = Math.pow(0.99, inactiveDays - 30); // 1% loss per day after 30 days
+  return Math.floor(baseKarma * decayFactor);
 }
 
 // ─── Local Expert badge eligibility ──────────────────────────────────────────

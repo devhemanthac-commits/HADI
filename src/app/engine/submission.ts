@@ -1,4 +1,5 @@
 import type { GemSubmission, GemCategory, Coords, SubmissionValidationResult } from "./types";
+import { isInMysuru } from "./consistency";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,9 @@ export function validateSubmission(data: {
   if (!data.coords) errors.push("Location is required — tap on the map or use your GPS.");
   if (data.photos.length < 1 || data.photos.length > 6) errors.push("Please add 1–6 photos.");
   if (data.userLevelIndex < 2) errors.push("You must be Level 3 (Pathfinder) to submit gems.");
+  if (data.coords && !isInMysuru(data.coords.lat, data.coords.lng)) {
+    errors.push("Invalid location. Submissions are currently restricted to the city's geographical bounding box.");
+  }
 
   return { valid: errors.length === 0, errors };
 }

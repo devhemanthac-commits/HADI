@@ -58,18 +58,24 @@ The app uses **real-world GPS location verification** via device sensors and the
    npm run dev
    ```
 
-## 📐 Architecture & Logic
+## 📐 Advanced Engine Architecture
 
-### Check-in Validation Pipeline
-The app features a multi-stage validation engine (`src/app/engine/checkin.ts`):
-1. Captures real device coordinates using `navigator.geolocation`.
-2. Computes the Haversine distance to the target Gem's coordinates.
-3. Applies proximity multipliers (e.g., 1.5x bonus for being within 20m).
-4. Verifies the gem's current "Bloom" capacity to prevent spamming.
-5. Persists the transaction locally (optimistic UI) and to Firestore.
+The core mechanics of HADI are driven by production-level mathematical engines (`src/app/engine/`):
 
-### Dual-Write Persistence
-To ensure offline capability, HADI uses a robust local caching mechanism (`localStorage_` wrapper) that immediately reflects state changes while asynchronously syncing with Firebase.
+### 1. Spatial Hash Grid Geofencing ($O(1)$)
+Instead of linear array scans, the background location watcher uses a mathematical grid-bucketing system (`geofence.ts`). On GPS update, it maps the user to a cell grid (~500m precision) and only checks distances against gems located in the local and immediately adjacent 8 cells, scaling effortlessly to tens of thousands of locations.
+
+### 2. Point-in-Polygon Ray-Casting Boundaries
+Zones in Mysuru are defined by exact GPS coordinate polygons (`hexmap.ts`). The engine casts a horizontal mathematical ray from the user's coordinate to determine intersection parity with the polygon boundaries, perfectly bounding zones like the *Heritage Core* without relying on third-party API bounds.
+
+### 3. TrueScore Leaderboard Algorithm
+The competitive ranking system (`leaderboard.ts`) doesn't just sort by raw points. It utilizes an **Exponential Moving Average (EMA)** momentum algorithm that balances historic baselines against recent activity velocity, rewarding active players with a multiplier similar to an Elo/Glicko rating system.
+
+### 4. Robust Optimistic Offline Sync
+To ensure 100% resilience against network drop-offs, the `SyncEngine` (`sync.ts`) acts as an optimistic background queue. Actions like Check-ins or Safety Reports are immediately applied to the local UI while being persisted to an Indexed Queue. A background thread attempts to push these payloads to Firebase, applying **Exponential Backoff** (2s, 4s, 8s...) on network failure.
+
+### 5. Multi-Layer Check-in Pipeline
+Check-ins pass through spoof-detection velocity windows, Cyrb53 53-bit cryptographic hash generation, and Haversine distance verification before being processed.
 
 ---
 <div align="center">

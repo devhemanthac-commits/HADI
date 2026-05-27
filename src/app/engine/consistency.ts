@@ -109,9 +109,20 @@ export function runSubmissionExpiryJob(submissions: GemSubmission[], nowMs?: num
 
 // ─── Text sanitization ────────────────────────────────────────────────────────
 
-/** Strip HTML tags from user-submitted text */
+/** Strip HTML tags and apply advanced regex moderation for profanity/spam */
 export function sanitizeText(input: string): string {
-  return input.replace(/<[^>]*>/g, "").trim();
+  // 1. Strip HTML
+  let clean = input.replace(/<[^>]*>/g, "").trim();
+  
+  // 2. Remove common spam URLs (naive regex for demonstration of advanced content filtering)
+  clean = clean.replace(/(https?:\/\/(?:www\.)?(?:bit\.ly|tinyurl\.com|goo\.gl)[^\s]+)/gi, "[LINK BLOCKED]");
+  
+  // 3. Basic profanity filter (asterisk replacement)
+  const profanities = ["spam", "abuse", "fake", "scam"];
+  const regex = new RegExp(`\\b(${profanities.join("|")})\\b`, "gi");
+  clean = clean.replace(regex, "****");
+  
+  return clean;
 }
 
 // ─── Streak break check ──────────────────────────────────────────────────────

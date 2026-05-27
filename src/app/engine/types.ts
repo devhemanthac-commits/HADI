@@ -56,6 +56,7 @@ export interface UserStats {
   isZoneGuardian: boolean;
   guardianZone: string | null;
   firstCheckinOfWeekTimestamp: number | null; // ms since epoch, for tie-breaking
+  pointsRedeemed?: number; // total points spent on rewards
 }
 
 // ─── Gem ────────────────────────────────────────────────────────────────────────
@@ -167,6 +168,7 @@ export interface ZoneDef {
   id: string;
   name: string;
   digipinCode: string;
+  polygon?: Coords[];
   totalGems: number;
   multiplier: number;
   unlockRequirement: ZoneUnlockReq;

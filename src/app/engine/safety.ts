@@ -1,4 +1,5 @@
 import type { SafetyReport, ReportType, Coords } from "./types";
+import { haversineDistance } from "./checkin";
 
 // ─── Report expiry windows (ms) ───────────────────────────────────────────────
 
@@ -46,6 +47,20 @@ export function createReport(
   };
 }
 
+/**
+ * Advanced Spatial Clustering
+ * Detects if a new report is a duplicate of an existing active report within a 50m radius.
+ */
+export function findDuplicateReport(
+  type: ReportType,
+  coords: Coords,
+  activeReports: SafetyReport[]
+): SafetyReport | undefined {
+  return activeReports.find(
+    (r) => r.type === type && r.status !== "Expired" && r.status !== "Dismissed" && haversineDistance(r.coords, coords) < 50
+  );
+}
+
 // ─── Confirm / Dismiss ────────────────────────────────────────────────────────
 
 export interface ConfirmResult {
@@ -54,16 +69,21 @@ export interface ConfirmResult {
   pointsForReporter: number;
 }
 
-export function confirmReport(report: SafetyReport, userId: string): ConfirmResult {
+export function confirmReport(report: SafetyReport, userId: string, weight: number = 1): ConfirmResult {
   if (report.confirmations.includes(userId) || report.dismissals.includes(userId)) {
     return { report, justConfirmed: false, pointsForReporter: 0 };
   }
-  const confirmations = [...report.confirmations, userId];
-  const justConfirmed = confirmations.length === CONFIRMATION_THRESHOLD;
+  
+  // Advanced reputation-weighted voting: if weight > 1, we push the user ID multiple times to simulate higher weight 
+  // without altering the data schema, or we just calculate length.
+  const newConfirmations = new Array(Math.floor(weight)).fill(userId);
+  const confirmations = [...report.confirmations, ...newConfirmations];
+  
+  const justConfirmed = confirmations.length >= CONFIRMATION_THRESHOLD && report.status === "Unconfirmed";
   const updatedReport: SafetyReport = {
     ...report,
     confirmations,
-    status: justConfirmed ? "Confirmed" : report.status,
+    status: report.status === "Unconfirmed" && justConfirmed ? "Confirmed" : report.status,
   };
   return { report: updatedReport, justConfirmed, pointsForReporter: justConfirmed ? CONFIRMATION_POINTS : 0 };
 }

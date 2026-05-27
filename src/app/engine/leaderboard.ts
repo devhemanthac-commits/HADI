@@ -11,17 +11,40 @@ export function getWeeklyScore(stats: UserStats): number {
   return stats.weeklyScore;
 }
 
+// ─── TrueScore EMA Momentum Algorithm ──────────────────────────────────────────
+
+/**
+ * Calculates a TrueScore based on an Exponential Moving Average (EMA) of recent activity.
+ * It weights recent points heavily against the user's historic baseline, rewarding high momentum.
+ */
+export function calculateTrueScore(weeklyScore: number, allTimeXP: number, streakDays: number): number {
+  const ALPHA = 0.3; // EMA smoothing factor
+  const momentumMultiplier = 1 + (streakDays * 0.05); // +5% per streak day
+  
+  // Baseline is an assumed flat distribution of their all time score over ~100 days
+  const historicBaseline = Math.max(1, allTimeXP / 100);
+  
+  // TrueScore combines pure weekly throughput with a dynamic momentum scalar
+  const trueScore = (ALPHA * weeklyScore) + ((1 - ALPHA) * historicBaseline);
+  
+  return Math.floor(trueScore * momentumMultiplier * 100);
+}
+
 // ─── Comparator / tie-breaking ────────────────────────────────────────────────
 
 /**
- * Sort comparator implementing the 5-tier tie-breaking rules:
- *  1. Higher weekly score
- *  2. More unique gems this week
- *  3. Longer streak
- *  4. Earlier first check-in of the week
- *  5. Higher all-time XP
+ * Advanced sort comparator using TrueScore algorithm:
+ *  1. Higher TrueScore (Momentum-weighted)
+ *  2. Higher Raw Weekly Score
+ *  3. More unique gems this week
+ *  4. Longer streak
+ *  5. Earlier first check-in of the week
  */
 export function compareEntries(a: LeaderboardEntry, b: LeaderboardEntry): number {
+  const aScore = calculateTrueScore(a.weeklyScore, a.allTimeXP, a.streakDays);
+  const bScore = calculateTrueScore(b.weeklyScore, b.allTimeXP, b.streakDays);
+  
+  if (bScore !== aScore) return bScore - aScore;
   if (b.weeklyScore !== a.weeklyScore) return b.weeklyScore - a.weeklyScore;
   if (b.uniqueGems  !== a.uniqueGems)  return b.uniqueGems  - a.uniqueGems;
   if (b.streakDays  !== a.streakDays)  return b.streakDays  - a.streakDays;
@@ -29,10 +52,7 @@ export function compareEntries(a: LeaderboardEntry, b: LeaderboardEntry): number
   // Earlier first check-in wins (lower timestamp = earlier)
   const aFirst = a.firstCheckinTimestamp ?? Infinity;
   const bFirst = b.firstCheckinTimestamp ?? Infinity;
-  if (aFirst !== bFirst) return aFirst - bFirst;
-
-  // All-time XP as final tiebreak
-  return b.allTimeXP - a.allTimeXP;
+  return aFirst - bFirst;
 }
 
 // ─── Build ranked list ────────────────────────────────────────────────────────
