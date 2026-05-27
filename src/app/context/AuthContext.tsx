@@ -13,6 +13,9 @@ import {
   verifyBeforeUpdateEmail,
   signOut as firebaseSignOut,
   User,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
 } from "firebase/auth";
 import { firebaseAuth } from "../lib/firebase";
 
@@ -37,6 +40,7 @@ interface AuthContextType {
   sendVerificationEmail: () => Promise<{ ok: boolean; error?: AuthError }>;
   resetPassword: (email: string) => Promise<{ ok: boolean; error?: AuthError }>;
   updateUserEmail: (newEmail: string) => Promise<{ ok: boolean; error?: AuthError }>;
+  sendSignInLink: (email: string) => Promise<{ ok: boolean; error?: AuthError }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -74,6 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setAuthLoading(false);
       return;
+    }
+
+    // Check if we are returning from an email link
+    if (isSignInWithEmailLink(firebaseAuth, window.location.href)) {
+      let email = window.localStorage.getItem('emailForSignIn');
+      if (!email) {
+        email = window.prompt('Please provide your email for confirmation');
+      }
+      if (email) {
+        signInWithEmailLink(firebaseAuth, email, window.location.href)
+          .then((result) => {
+            window.localStorage.removeItem('emailForSignIn');
+          })
+          .catch((err) => console.error('Error signing in with email link', err));
+      }
     }
 
     const unsub = onAuthStateChanged(firebaseAuth, (u) => {
@@ -205,11 +224,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isMockMode, user]);
 
+  const sendSignInLink = useCallback(async (email: string) => {
+    if (isMockMode) {
+      const mockUser = {
+        uid: "mock-email-uid",
+        email: email,
+        displayName: email.split("@")[0],
+      } as unknown as User;
+      setUser(mockUser);
+      localStorage.setItem("hadi_mock_user", JSON.stringify(mockUser));
+      return { ok: true };
+    }
+    const actionCodeSettings = {
+      url: window.location.origin, // the URL to redirect to
+      handleCodeInApp: true,
+    };
+    try {
+      await sendSignInLinkToEmail(firebaseAuth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email);
+      return { ok: true };
+    } catch (e: unknown) {
+      const code = (e as { code?: string }).code ?? "";
+      return { ok: false, error: mapFirebaseError(code) };
+    }
+  }, [isMockMode]);
+
   return (
     <AuthContext.Provider value={{
       user, authLoading,
       signInWithGoogle, signInWithEmail, signUpWithEmail, signOut,
-      sendVerificationEmail, resetPassword, updateUserEmail
+      sendVerificationEmail, resetPassword, updateUserEmail, sendSignInLink
     }}>
       {children}
     </AuthContext.Provider>

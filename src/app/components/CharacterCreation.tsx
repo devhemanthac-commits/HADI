@@ -38,6 +38,8 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
   const [email, setEmail] = useState("");
   const [otpMode, setOtpMode] = useState(false);
   const [otpCode, setOtpCode] = useState(["", "", "", ""]);
+  const [expectedOtp, setExpectedOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AuthError | null>(null);
 
@@ -90,6 +92,13 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
       addToast("warning", "Please enter a valid email address.");
       return;
     }
+    
+    // Generate a 4 digit OTP
+    const generated = Math.floor(1000 + Math.random() * 9000).toString();
+    setExpectedOtp(generated);
+    setOtpError("");
+    console.log(`[MOCK EMAIL SERVICE] OTP for ${email.trim()} is: ${generated}`);
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -113,13 +122,22 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
     // Complete OTP verification if all digits are entered
     if (newOtp.every((digit) => digit !== "") && index === 3) {
       handleCompleteEmailAuth(newOtp.join(""));
+    } else {
+      setOtpError(""); // clear error when typing again
     }
   };
 
   const handleCompleteEmailAuth = async (code: string) => {
+    if (code !== expectedOtp) {
+      setOtpError("error creating acc");
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    // Simulate checking code (accepts any code for seamless dev onboarding)
+    setOtpError("");
+    
+    // Simulate checking code
     setTimeout(async () => {
       const res = await signInWithEmail(email.trim(), "mock-otp-password");
       setLoading(false);
@@ -542,8 +560,14 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
                   </div>
 
                   <p className="text-[10px] text-[#A39A88]">
-                    Tip: Enter any 4 digits to proceed in Mock Developer Mode!
+                    Check console for the Mock OTP to login!
                   </p>
+                  
+                  {otpError && (
+                    <p className="font-dm text-center text-xs text-[#f87171] mt-2 font-bold animate-pulse">
+                      {otpError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
