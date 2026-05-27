@@ -30,16 +30,13 @@ const INITIAL_BUBBLES: Bubble[] = [
 export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationProps) {
   const C = useColors();
   const { setLocalMode, localMode, addToast } = useApp();
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithGoogle, sendSignInLink } = useAuth();
 
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [flyingBubbles, setFlyingBubbles] = useState<Record<string, boolean>>({});
   const [email, setEmail] = useState("");
   const [otpMode, setOtpMode] = useState(false);
-  const [otpCode, setOtpCode] = useState(["", "", "", ""]);
-  const [expectedOtp, setExpectedOtp] = useState("");
-  const [otpError, setOtpError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AuthError | null>(null);
 
@@ -85,73 +82,23 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
     }
   };
 
-  // Email/OTP login auth logic
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  // Email link login auth logic
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes("@")) {
       addToast("warning", "Please enter a valid email address.");
       return;
     }
-    
-    // Generate a 4 digit OTP
-    const generated = Math.floor(1000 + Math.random() * 9000).toString();
-    setExpectedOtp(generated);
-    setOtpError("");
-    console.log(`[MOCK EMAIL SERVICE] OTP for ${email.trim()} is: ${generated}`);
-
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setOtpMode(true);
-      addToast("info", "Verification code sent to your email!");
-    }, 800);
-  };
-
-  const handleOtpChange = (index: number, val: string) => {
-    if (!/^\d*$/.test(val)) return;
-    const newOtp = [...otpCode];
-    newOtp[index] = val.slice(-1);
-    setOtpCode(newOtp);
-
-    // Auto-focus next input
-    if (val && index < 3) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-
-    // Complete OTP verification if all digits are entered
-    if (newOtp.every((digit) => digit !== "") && index === 3) {
-      handleCompleteEmailAuth(newOtp.join(""));
-    } else {
-      setOtpError(""); // clear error when typing again
-    }
-  };
-
-  const handleCompleteEmailAuth = async (code: string) => {
-    if (code !== expectedOtp) {
-      setOtpError("error creating acc");
-      return;
-    }
-
     setLoading(true);
     setError(null);
-    setOtpError("");
-    
-    // Simulate checking code
-    setTimeout(async () => {
-      const res = await signInWithEmail(email.trim(), "mock-otp-password");
-      setLoading(false);
-      if (res.ok) {
-        localStorage.setItem("hadi_user_vibes", JSON.stringify(selectedVibes));
-        const uid = firebaseAuth.currentUser?.uid || "mock-email-uid";
-        localStorage.setItem(`hadi_onboarded_${uid}`, "true");
-        localStorage.setItem("hadi_onboarded_mock-email-uid", "true");
-        addToast("success", "Welcome Explorer! Claimed 100 XP Welcome Bonus!");
-        onSuccess();
-      } else {
-        setError(res.error ?? "unknown");
-      }
-    }, 1000);
+    const res = await sendSignInLink(email.trim());
+    setLoading(false);
+    if (res.ok) {
+      setOtpMode(true);
+      addToast("info", "Verification link sent to your email!");
+    } else {
+      setError(res.error ?? "unknown");
+    }
   };
 
   return (
@@ -533,46 +480,22 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
 
                 {/* Verification Overlay */}
                 <div className="flex-1 flex flex-col justify-center items-center py-4">
-                  <p className="font-dm text-xs text-[#A39A88] text-center mb-4">
-                    Enter the 4-digit code sent to <strong className="text-[#F5F0E8]">{email}</strong>
+                  <p className="font-dm text-sm text-[#A39A88] text-center mb-4">
+                    A secure sign-in link has been sent to <br/><strong className="text-[#F5F0E8]">{email}</strong>
                   </p>
                   
-                  {/* OTP Code fields */}
-                  <div className="flex gap-3 justify-center mb-4">
-                    {otpCode.map((digit, idx) => (
-                      <input
-                        key={idx}
-                        id={`otp-${idx}`}
-                        type="text"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(idx, e.target.value)}
-                        className="w-12 h-14 rounded-xl text-center text-2xl font-bold font-dm transition-all"
-                        style={{
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1.5px solid rgba(255,255,255,0.12)",
-                          color: "#fff",
-                          outline: "none",
-                        }}
-                        autoFocus={idx === 0}
-                      />
-                    ))}
+                  <div className="text-4xl animate-pulse my-4 drop-shadow-lg">
+                    ✉️
                   </div>
 
-                  <p className="text-[10px] text-[#A39A88]">
-                    Check console for the Mock OTP to login!
+                  <p className="text-[10px] text-[#A39A88] text-center mt-2">
+                    Check your inbox and click the link to claim your profile. You can close this window.
                   </p>
-                  
-                  {otpError && (
-                    <p className="font-dm text-center text-xs text-[#f87171] mt-2 font-bold animate-pulse">
-                      {otpError}
-                    </p>
-                  )}
                 </div>
 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                   <button
-                    onClick={() => { setOtpMode(false); setOtpCode(["", "", "", ""]); }}
+                    onClick={() => { setOtpMode(false); }}
                     className="text-xs font-semibold text-[#A39A88] hover:text-[#F5F0E8] cursor-pointer"
                   >
                     ← Change Email
@@ -640,7 +563,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
                   disabled={loading}
                   className="w-full font-dm py-3.5 rounded-2xl bg-[#E07B2A] text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-md shadow-[#E07B2A]/20 cursor-pointer"
                 >
-                  {loading ? "Sending link…" : "Get Verification Code →"}
+                  {loading ? "Sending link…" : "Get Verification Link →"}
                 </button>
               </form>
 
@@ -660,7 +583,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
           ) : (
             <div className="w-full text-center">
               <p className="font-dm text-xs text-[#A39A88] max-w-xs mx-auto leading-relaxed">
-                Verification screen is active. Enter any 4 digits into the passport cards above to claim your profile and access the HADI database instantly.
+                Waiting for verification. Once you click the link in your email, you will be authenticated automatically!
               </p>
             </div>
           )}
