@@ -36,7 +36,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [flyingBubbles, setFlyingBubbles] = useState<Record<string, boolean>>({});
   const [email, setEmail] = useState("");
-  const [otpMode, setOtpMode] = useState(false);
+  const [linkSentMode, setLinkSentMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AuthError | null>(null);
 
@@ -94,7 +94,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
     const res = await sendSignInLink(email.trim());
     setLoading(false);
     if (res.ok) {
-      setOtpMode(true);
+      setLinkSentMode(true);
       addToast("info", "Verification link sent to your email!");
     } else {
       setError(res.error ?? "unknown");
@@ -423,7 +423,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
 
           {/* Interactive Passport 3D Layout */}
           <div className="w-full max-w-[340px] h-[360px] passport-perspective mb-6">
-            <div className={`w-full h-full passport-card relative ${otpMode ? "passport-flipped" : ""}`}>
+            <div className={`w-full h-full passport-card relative ${linkSentMode ? "passport-flipped" : ""}`}>
               {/* PASSPORT COVER (Front Face) */}
               <div
                 className="passport-face absolute inset-0 rounded-[24px] p-6 flex flex-col justify-between overflow-hidden shadow-2xl border"
@@ -475,7 +475,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
               >
                 <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
                   <span className="text-[10px] uppercase font-bold tracking-widest text-[#E07B2A]">Verification Gate</span>
-                  <span className="text-[9px] text-[#A39A88]">MOCK-SECURE-OTP</span>
+                  <span className="text-[9px] text-[#A39A88]">SECURE-LINK</span>
                 </div>
 
                 {/* Verification Overlay */}
@@ -495,7 +495,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
 
                 <div className="flex justify-between items-center border-t border-white/10 pt-3">
                   <button
-                    onClick={() => { setOtpMode(false); }}
+                    onClick={() => { setLinkSentMode(false); }}
                     className="text-xs font-semibold text-[#A39A88] hover:text-[#F5F0E8] cursor-pointer"
                   >
                     ← Change Email
@@ -507,7 +507,7 @@ export function CharacterCreation({ onSuccess, onDismiss }: CharacterCreationPro
           </div>
 
           {/* Form / Actions area below passport */}
-          {!otpMode ? (
+          {!linkSentMode ? (
             <div className="w-full flex flex-col gap-3">
               {/* Google Button */}
               <button
